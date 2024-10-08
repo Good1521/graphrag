@@ -132,6 +132,7 @@ async def run_pipeline_with_config(
         raise ValueError(msg)
 
     if is_update_run and update_index_storage:
+
         print("--------------run with update------------")
 
         delta_dataset = await get_delta_docs(dataset, storage)
