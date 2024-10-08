@@ -1,15 +1,15 @@
 # Copyright (c) 2024 Microsoft Corporation.
 # Licensed under the MIT License
 
-"""A module containing text_embed, load_strategy and create_row_from_embedding_data methods definition."""
+"""A module containing embed_text, load_strategy and create_row_from_embedding_data methods definition."""
 
 import logging
 from enum import Enum
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 import pandas as pd
-from datashaper import TableContainer, VerbCallbacks, VerbInput, verb
+from datashaper import VerbCallbacks
 
 from graphrag.index.cache import PipelineCache
 from graphrag.vector_stores import (
@@ -38,21 +38,19 @@ class TextEmbedStrategyType(str, Enum):
         return f'"{self.value}"'
 
 
-@verb(name="text_embed")
-async def text_embed(
-    input: VerbInput,
+async def embed_text(
+    input: pd.DataFrame,
     callbacks: VerbCallbacks,
     cache: PipelineCache,
     column: str,
     strategy: dict,
-    **kwargs,
-) -> TableContainer:
+    embedding_name: str = "default",
+):
     """
-    Embed a piece of text into a vector space. The verb outputs a new column containing a mapping between doc_id and vector.
+    Embed a piece of text into a vector space. The operation outputs a new column containing a mapping between doc_id and vector.
 
     ## Usage
     ```yaml
-    verb: text_embed
     args:
         column: text # The name of the column containing the text to embed, this can either be a column with text, or a column with a list[tuple[doc_id, str]]
         to: embedding # The name of the column to output the embedding to
@@ -60,7 +58,7 @@ async def text_embed(
     ```
 
     ## Strategies
-    The text embed verb uses a strategy to embed the text. The strategy is an object which defines the strategy to use. The following strategies are available:
+    The text embed operation uses a strategy to embed the text. The strategy is an object which defines the strategy to use. The following strategies are available:
 
     ### openai
     This strategy uses openai to embed a piece of text. In particular it uses a LLM to embed a piece of text. The strategy config is as follows:
@@ -82,7 +80,6 @@ async def text_embed(
     vector_store_config = strategy.get("vector_store")
 
     if vector_store_config:
-        embedding_name = kwargs.get("embedding_name", "default")
         collection_name = _get_collection_name(vector_store_config, embedding_name)
         vector_store: BaseVectorStore = _create_vector_store(
             vector_store_config, collection_name
@@ -99,7 +96,6 @@ async def text_embed(
             vector_store,
             vector_store_workflow_config,
             vector_store_config.get("store_in_table", False),
-            kwargs.get("to", f"{column}_embedding"),
         )
 
     return await _text_embed_in_memory(
@@ -108,33 +104,28 @@ async def text_embed(
         cache,
         column,
         strategy,
-        kwargs.get("to", f"{column}_embedding"),
     )
 
 
 async def _text_embed_in_memory(
-    input: VerbInput,
+    input: pd.DataFrame,
     callbacks: VerbCallbacks,
     cache: PipelineCache,
     column: str,
     strategy: dict,
-    to: str,
 ):
-    output_df = cast(pd.DataFrame, input.get_input())
     strategy_type = strategy["type"]
     strategy_exec = load_strategy(strategy_type)
     strategy_args = {**strategy}
-    input_table = input.get_input()
 
-    texts: list[str] = input_table[column].to_numpy().tolist()
+    texts: list[str] = input[column].to_numpy().tolist()
     result = await strategy_exec(texts, callbacks, cache, strategy_args)
 
-    output_df[to] = result.embeddings
-    return TableContainer(table=output_df)
+    return result.embeddings
 
 
 async def _text_embed_with_vector_store(
-    input: VerbInput,
+    input: pd.DataFrame,
     callbacks: VerbCallbacks,
     cache: PipelineCache,
     column: str,
@@ -142,9 +133,7 @@ async def _text_embed_with_vector_store(
     vector_store: BaseVectorStore,
     vector_store_config: dict,
     store_in_table: bool = False,
-    to: str = "",
 ):
-    output_df = cast(pd.DataFrame, input.get_input())
     strategy_type = strategy["type"]
     strategy_exec = load_strategy(strategy_type)
     strategy_args = {**strategy}
@@ -157,18 +146,20 @@ async def _text_embed_with_vector_store(
     id_column: str = vector_store_config.get("id_column", "id")
     overwrite: bool = vector_store_config.get("overwrite", True)
 
-    if column not in output_df.columns:
-        msg = f"Column {column} not found in input dataframe with columns {output_df.columns}"
+    if column not in input.columns:
+        msg = (
+            f"Column {column} not found in input dataframe with columns {input.columns}"
+        )
         raise ValueError(msg)
-    if title_column not in output_df.columns:
-        msg = f"Column {title_column} not found in input dataframe with columns {output_df.columns}"
+    if title_column not in input.columns:
+        msg = f"Column {title_column} not found in input dataframe with columns {input.columns}"
         raise ValueError(msg)
-    if id_column not in output_df.columns:
-        msg = f"Column {id_column} not found in input dataframe with columns {output_df.columns}"
+    if id_column not in input.columns:
+        msg = f"Column {id_column} not found in input dataframe with columns {input.columns}"
         raise ValueError(msg)
 
     total_rows = 0
-    for row in output_df[column]:
+    for row in input[column]:
         if isinstance(row, list):
             total_rows += len(row)
         else:
@@ -179,10 +170,8 @@ async def _text_embed_with_vector_store(
 
     all_results = []
 
-    while insert_batch_size * i < input.get_input().shape[0]:
-        batch = input.get_input().iloc[
-            insert_batch_size * i : insert_batch_size * (i + 1)
-        ]
+    while insert_batch_size * i < input.shape[0]:
+        batch = input.iloc[insert_batch_size * i : insert_batch_size * (i + 1)]
         texts: list[str] = batch[column].to_numpy().tolist()
         titles: list[str] = batch[title_column].to_numpy().tolist()
         ids: list[str] = batch[id_column].to_numpy().tolist()
@@ -216,9 +205,9 @@ async def _text_embed_with_vector_store(
         i += 1
 
     if store_in_table:
-        output_df[to] = all_results
+        return all_results
 
-    return TableContainer(table=output_df)
+    return None
 
 
 def _create_vector_store(
