@@ -59,6 +59,7 @@ log = logging.getLogger(__name__)
 
 
 async def run_pipeline_with_config(
+    download_task,
     config_or_path: PipelineConfig | str,
     workflows: list[PipelineWorkflowReference] | None = None,
     dataset: pd.DataFrame | None = None,
@@ -120,15 +121,25 @@ async def run_pipeline_with_config(
     if dataset is None:
         msg = "No dataset provided!"
         raise ValueError(msg)
-
+    
     if is_update_run:
+        print("--------------run with update------------")
+
         delta_dataset = await get_delta_docs(dataset, storage)
 
+        # print()
+        # print("------delta_dataset--------------",delta_dataset)
+        # print()
+        # print("------delta_dataset.new_inputs--------------",delta_dataset.new_inputs['text'])
+        # print()
+
         delta_storage = storage.child("delta")
+        # delta_storage = storage
 
         # Run the pipeline on the new documents
         tables_dict = {}
         async for table in run_pipeline(
+            download_task,
             workflows=workflows,
             dataset=delta_dataset.new_inputs,
             storage=delta_storage,
@@ -147,7 +158,9 @@ async def run_pipeline_with_config(
         await update_dataframe_outputs(tables_dict, storage)
 
     else:
+        print("------------run without update---------------")
         async for table in run_pipeline(
+            download_task,
             workflows=workflows,
             dataset=dataset,
             storage=storage,
@@ -165,6 +178,7 @@ async def run_pipeline_with_config(
 
 
 async def run_pipeline(
+    download_task,
     workflows: list[PipelineWorkflowReference],
     dataset: pd.DataFrame,
     storage: PipelineStorage | None = None,
@@ -243,12 +257,27 @@ async def run_pipeline(
     try:
         await _dump_stats(context.stats, context.storage)
 
-        for workflow_to_run in workflows_to_run:
+        for idx, workflow_to_run in enumerate(workflows_to_run):
+
+            if download_task.is_stop:
+                # print("---------workflow_is_stop----------",download_task.is_stop)
+                break   
+
             # Try to flush out any intermediate dataframes
             gc.collect()
 
             last_workflow = workflow_to_run.workflow.name
+
+            # workflow_name: str, num_workflows: int, finished_workflows: int, now_workflow: int
+            download_task.update_mes(workflow_to_run.workflow.name, len(workflows_to_run), idx, idx+1)
+
+            await download_task.progress_queue.put({"type": "workflow", "workflow_name":workflow_to_run.workflow.name, \
+                            "num_workflows":len(workflows_to_run),"finished_workflows":idx, "now_workflow":idx+1, 
+                            "progress": round(idx / len(workflows_to_run) * 100, 2)})  # 将当前进度放入队列
+
+
             result = await _process_workflow(
+                download_task,
                 workflow_to_run.workflow,
                 context,
                 callbacks,
@@ -256,10 +285,26 @@ async def run_pipeline(
                 workflow_dependencies,
                 dataset,
                 start_time,
-                is_resume_run,
+                is_resume_run
             )
             if result:
                 yield result
+
+        if download_task.is_stop:
+            download_task.graceful_stop()
+            await download_task.progress_queue.put("Stop")  # 任务完成
+        else:
+            # workflow_name: str, num_workflows: int, finished_workflows: int, now_workflow: int
+            download_task.update_mes("Done", len(workflows_to_run), len(workflows_to_run), len(workflows_to_run))
+
+            await download_task.progress_queue.put({"type": "workflow", "workflow_name":"Done", 
+                                                    "num_workflows":len(workflows_to_run),"finished_workflows":len(workflows_to_run), 
+                                                    "now_workflow":len(workflows_to_run), 
+                                                    "progress": round(len(workflows_to_run) / len(workflows_to_run) * 100, 2)})  # 将当前进度放入队列
+            
+            await download_task.progress_queue.put("DONE")  # 任务完成
+
+            download_task.complete_finished()
 
         context.stats.total_runtime = time.time() - start_time
         await _dump_stats(context.stats, context.storage)
