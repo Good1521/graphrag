@@ -82,6 +82,7 @@ def _create_callback_chain(
 
 
 async def _process_workflow(
+    download_task,
     workflow: Workflow,
     context: PipelineRunContext,
     callbacks: WorkflowCallbacks,
@@ -102,7 +103,12 @@ async def _process_workflow(
     )
 
     workflow_start_time = time.time()
-    result = await workflow.run(context, callbacks)
+
+    result = await workflow.run(download_task, context, callbacks)
+    
+    if download_task.is_stop:
+        return None
+    
     await _write_workflow_stats(
         workflow,
         result,

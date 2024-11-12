@@ -10,7 +10,7 @@ Backwards compatibility is not guaranteed at this time.
 
 from pathlib import Path
 
-from graphrag.config import CacheType, GraphRagConfig
+from graphrag.config import CacheType, GraphRagConfig, resolve_paths, enable_logging_with_config
 from graphrag.index.cache.noop_pipeline_cache import NoopPipelineCache
 from graphrag.index.create_pipeline_config import create_pipeline_config
 from graphrag.index.emit.types import TableEmitterType
@@ -18,9 +18,14 @@ from graphrag.index.run import run_pipeline_with_config
 from graphrag.index.typing import PipelineRunResult
 from graphrag.logging import ProgressReporter
 from graphrag.vector_stores.factory import VectorStoreType
+from graphrag.utils.cli import redact
+from graphrag.index.validate_config import validate_config_names
+import argparse
+import asyncio 
 
 
 async def build_index(
+    download_task,
     config: GraphRagConfig,
     run_id: str = "",
     is_resume_run: bool = False,
@@ -67,6 +72,7 @@ async def build_index(
     )
     outputs: list[PipelineRunResult] = []
     async for output in run_pipeline_with_config(
+        download_task,
         pipeline_config,
         run_id=run_id,
         memory_profile=memory_profile,
@@ -103,3 +109,127 @@ def _patch_vector_config(config: GraphRagConfig):
         lancedb_dir = Path(config.root_dir).resolve() / db_uri
         config.embeddings.vector_store["db_uri"] = str(lancedb_dir)  # type: ignore
     return config
+
+
+
+async def get_index(download_task,root_directory,config_file,run_identifier,is_update_run):
+    from graphrag.config import load_config
+    from graphrag.logging import ProgressReporter, ReporterType, create_progress_reporter
+    import time
+
+    # 调用函数加载配置
+    config = load_config(Path(root_directory), config_filepath=Path(config_file))
+    if is_update_run:
+        # Check if update storage exist, if not configure it with default values
+        if not config.update_index_storage:
+            from graphrag.config.defaults import STORAGE_TYPE, UPDATE_STORAGE_BASE_DIR
+            from graphrag.config.models.storage_config import StorageConfig
+
+            config.update_index_storage = StorageConfig(
+                type=STORAGE_TYPE,
+                base_dir=UPDATE_STORAGE_BASE_DIR,
+            )
+
+    cache = True
+    output_dir = None
+    skip_validation = False
+    resume = None
+    run_id = resume or time.strftime("%Y%m%d-%H%M%S")
+    # 如果需要，可以加载进度报告器
+    # progress_reporter = create_progress_reporter(ReporterType.RICH )
+    progress_reporter = None
+
+    config.storage.base_dir = str(output_dir) if output_dir else config.storage.base_dir
+    config.reporting.base_dir = (
+        str(output_dir) if output_dir else config.reporting.base_dir
+    )
+    resolve_paths(config, run_id)
+
+    if not cache:
+        config.cache.type = CacheType.none
+
+    if skip_validation:
+        validate_config_names(progress_reporter, config)
+
+    # 使用配置
+    outputs = await build_index(
+        download_task=download_task,
+        config=config,
+        run_id=run_id,
+        is_resume_run=False,
+        memory_profile=False,
+        progress_reporter=progress_reporter,
+        emit=None
+    )
+    download_task.finish()
+    print("重建结束")
+    
+    return outputs
+
+
+
+    # 存储下载任务信息的类
+class DownloadTask:
+    def __init__(self, session_id: str, progress_queue: asyncio.Queue):
+        self.session_id = session_id
+        self.workflow_name = None
+        self.num_workflows = 0
+        self.finished_workflows = 0
+        self.now_workflow = 0
+        self.progress = 0
+        self.progress_queue = progress_queue
+        self.is_downloading= None
+        self.is_stop = False
+        self.is_graceful_stop = None
+        self.complete_finish = None
+
+    def update_mes(self, workflow_name: str, num_workflows: int, finished_workflows: int, now_workflow: int):
+        self.workflow_name = workflow_name
+        self.num_workflows = num_workflows
+        self.finished_workflows = finished_workflows
+        self.now_workflow = now_workflow
+        self.progress = round(finished_workflows / num_workflows * 100, 2)
+
+    def start(self):
+        self.is_downloading = True
+
+    def stop(self):
+        self.is_stop = True
+
+    def finish(self):
+        self.is_downloading = False
+
+    def complete_finished(self):
+        self.complete_finish = True
+
+    def graceful_stop(self):
+        self.is_graceful_stop = True
+        self.complete_finish = False
+
+
+
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--root_directory", type=str, default='/home/turing/graphragtest/graphrag_0.4.1/ragtest')
+    parser.add_argument("--config_file", type=str, default='/home/turing/graphragtest/graphrag_0.4.1/ragtest/settings.yaml')
+    parser.add_argument("--run_identifier", type=str, default='latest')
+    parser.add_argument("--is_update_run", type=str, default=False)
+
+    args = parser.parse_args()
+
+    root_directory = Path(args.root_directory)
+    config_file = Path(args.config_file)
+    run_identifier = args.run_identifier
+    is_update_run = args.is_update_run
+
+    progress_queue = asyncio.Queue()
+
+    download_task = DownloadTask(
+        session_id="123456789",
+        progress_queue=progress_queue
+    )
+
+    #download_task,root_directory,config_file,run_identifier
+    asyncio.run(get_index(download_task,root_directory,config_file,run_identifier,is_update_run))  # 正确地运行异步主任务
