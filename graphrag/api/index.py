@@ -225,8 +225,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--root_directory", type=str, default='/home/turing/graphragtest/graphrag5.0.0/ragtest')
-    # parser.add_argument("--config_file", type=str, default='/home/turing/graphragtest/graphrag5.0.0/ragtest/settings.yaml')
-    parser.add_argument("--config_file", type=str, default='/home/turing/workspace/rag/stores/default_setting/settings.yaml')
+    parser.add_argument("--config_file", type=str, default='/home/turing/graphragtest/graphrag5.0.0/ragtest/settings.yaml')
     parser.add_argument("--run_identifier", type=str, default='latest')
     parser.add_argument("--is_update_run", type=str, default=False)
 
