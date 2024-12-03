@@ -15,10 +15,12 @@ from datashaper import (
     derive_from_rows,
 )
 
+from graphrag.cache.pipeline_cache import PipelineCache
 from graphrag.index.bootstrap import bootstrap
-from graphrag.index.cache import PipelineCache
-
-from .strategies.typing import Document, EntityExtractStrategy
+from graphrag.index.operations.extract_entities.strategies.typing import (
+    Document,
+    EntityExtractStrategy,
+)
 
 log = logging.getLogger(__name__)
 
@@ -162,14 +164,18 @@ def _load_strategy(strategy_type: ExtractEntityStrategyType) -> EntityExtractStr
     """Load strategy method definition."""
     match strategy_type:
         case ExtractEntityStrategyType.graph_intelligence:
-            from .strategies.graph_intelligence import run_graph_intelligence
+            from graphrag.index.operations.extract_entities.strategies.graph_intelligence import (
+                run_graph_intelligence,
+            )
 
             return run_graph_intelligence
 
         case ExtractEntityStrategyType.nltk:
             bootstrap()
             # dynamically import nltk strategy to avoid dependency if not used
-            from .strategies.nltk import run as run_nltk
+            from graphrag.index.operations.extract_entities.strategies.nltk import (
+                run as run_nltk,
+            )
 
             return run_nltk
         case _:

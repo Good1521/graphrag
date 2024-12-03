@@ -10,13 +10,12 @@ Backwards compatibility is not guaranteed at this time.
 
 from pathlib import Path
 
-from graphrag.config import CacheType, GraphRagConfig, resolve_paths, enable_logging_with_config
+from graphrag.config import CacheType, GraphRagConfig
 from graphrag.index.cache.noop_pipeline_cache import NoopPipelineCache
 from graphrag.index.create_pipeline_config import create_pipeline_config
-from graphrag.index.emit.types import TableEmitterType
 from graphrag.index.run import run_pipeline_with_config
 from graphrag.index.typing import PipelineRunResult
-from graphrag.logging import ProgressReporter
+from graphrag.logging.base import ProgressReporter
 from graphrag.vector_stores.factory import VectorStoreType
 from graphrag.utils.cli import redact
 from graphrag.index.validate_config import validate_config_names
@@ -31,7 +30,6 @@ async def build_index(
     is_resume_run: bool = False,
     memory_profile: bool = False,
     progress_reporter: ProgressReporter | None = None,
-    emit: list[TableEmitterType] = [TableEmitterType.Parquet],  # noqa: B006
 ) -> list[PipelineRunResult]:
     """Run the pipeline with the given configuration.
 
@@ -49,9 +47,6 @@ async def build_index(
         Whether to enable memory profiling.
     progress_reporter : ProgressReporter | None default=None
         The progress reporter.
-    emit : list[str]
-        The list of emitter types to emit.
-        Accepted values {"parquet", "csv"}.
 
     Returns
     -------
@@ -78,7 +73,6 @@ async def build_index(
         memory_profile=memory_profile,
         cache=pipeline_cache,
         progress_reporter=progress_reporter,
-        emit=emit,
         is_resume_run=is_resume_run,
         is_update_run=is_update_run,
     ):

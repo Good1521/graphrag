@@ -14,16 +14,20 @@ from typing import cast
 import pandas as pd
 from datashaper import NoopVerbCallbacks, WorkflowCallbacks
 
+from graphrag.cache.factory import create_cache
+from graphrag.cache.pipeline_cache import PipelineCache
 from graphrag.callbacks.console_workflow_callbacks import ConsoleWorkflowCallbacks
-from graphrag.index.cache import PipelineCache
-from graphrag.index.config import (
+from graphrag.callbacks.factory import create_pipeline_reporter
+from graphrag.index.config.cache import PipelineMemoryCacheConfig
+from graphrag.index.config.pipeline import (
     PipelineConfig,
     PipelineWorkflowReference,
-    PipelineWorkflowStep,
 )
-from graphrag.index.emit import TableEmitterType, create_table_emitters
+from graphrag.index.config.storage import PipelineFileStorageConfig
+from graphrag.index.config.workflow import PipelineWorkflowStep
+from graphrag.index.exporter import ParquetExporter
+from graphrag.index.input.factory import create_input
 from graphrag.index.load_pipeline_config import load_pipeline_config
-from graphrag.index.run.cache import _create_cache
 from graphrag.index.run.postprocess import (
     _create_postprocess_steps,
     _run_post_process_steps,
@@ -31,8 +35,6 @@ from graphrag.index.run.postprocess import (
 from graphrag.index.run.profiling import _dump_stats
 from graphrag.index.run.utils import (
     _apply_substitutions,
-    _create_input,
-    _create_reporter,
     _validate_dataset,
     create_run_context,
 )
@@ -40,7 +42,6 @@ from graphrag.index.run.workflow import (
     _create_callback_chain,
     _process_workflow,
 )
-from graphrag.index.storage import PipelineStorage
 from graphrag.index.typing import PipelineRunResult
 from graphrag.index.update.incremental_index import (
     get_delta_docs,
@@ -51,11 +52,10 @@ from graphrag.index.workflows import (
     WorkflowDefinitions,
     load_workflows,
 )
-from graphrag.logging import (
-    NullProgressReporter,
-    ProgressReporter,
-)
-from graphrag.utils.storage import _create_storage
+from graphrag.logging.base import ProgressReporter
+from graphrag.logging.null_progress import NullProgressReporter
+from graphrag.storage.factory import create_storage
+from graphrag.storage.pipeline_storage import PipelineStorage
 
 log = logging.getLogger(__name__)
 
@@ -73,7 +73,6 @@ async def run_pipeline_with_config(
     input_post_process_steps: list[PipelineWorkflowStep] | None = None,
     additional_verbs: VerbDefinitions | None = None,
     additional_workflows: WorkflowDefinitions | None = None,
-    emit: list[TableEmitterType] | None = None,
     memory_profile: bool = False,
     run_id: str | None = None,
     is_resume_run: bool = False,
@@ -92,7 +91,6 @@ async def run_pipeline_with_config(
         - input_post_process_steps - The post process steps to run on the input data (this overrides the config)
         - additional_verbs - The custom verbs to use for the pipeline.
         - additional_workflows - The custom workflows to use for the pipeline.
-        - emit - The table emitters to use for the pipeline.
         - memory_profile - Whether or not to profile the memory.
         - run_id - The run id to start or resume from.
     """
@@ -107,19 +105,26 @@ async def run_pipeline_with_config(
     root_dir = config.root_dir or ""
 
     progress_reporter = progress_reporter or NullProgressReporter()
-    storage = storage or _create_storage(config.storage, root_dir=Path(root_dir))
+    storage = storage = create_storage(config.storage)  # type: ignore
 
     if is_update_run:
-        update_index_storage = update_index_storage or _create_storage(
-            config.update_index_storage, root_dir=Path(root_dir)
+        update_index_storage = update_index_storage or create_storage(
+            config.update_index_storage
+            or PipelineFileStorageConfig(base_dir=str(Path(root_dir) / "output"))
         )
 
-    cache = cache or _create_cache(config.cache, root_dir)
-    callbacks = callbacks or _create_reporter(config.reporting, root_dir)
+    # TODO: remove the default choice (PipelineMemoryCacheConfig) when the new config system guarantees the existence of a cache config
+    cache = cache or create_cache(config.cache or PipelineMemoryCacheConfig(), root_dir)
+    callbacks = (
+        create_pipeline_reporter(config.reporting, root_dir)
+        if config.reporting
+        else None
+    )
+    # TODO: remove the type ignore when the new config system guarantees the existence of an input config
     dataset = (
         dataset
         if dataset is not None
-        else await _create_input(config.input, progress_reporter, root_dir)
+        else await create_input(config.input, progress_reporter, root_dir)  # type: ignore
     )
 
     post_process_steps = input_post_process_steps or _create_postprocess_steps(
@@ -158,7 +163,6 @@ async def run_pipeline_with_config(
             additional_verbs=additional_verbs,
             additional_workflows=additional_workflows,
             progress_reporter=progress_reporter,
-            emit=emit,
             is_resume_run=False,
         ):
             tables_dict[table.workflow] = table.result
@@ -188,7 +192,6 @@ async def run_pipeline_with_config(
             additional_verbs=additional_verbs,
             additional_workflows=additional_workflows,
             progress_reporter=progress_reporter,
-            emit=emit,
             is_resume_run=is_resume_run,
         ):
             yield table
@@ -205,7 +208,6 @@ async def run_pipeline(
     input_post_process_steps: list[PipelineWorkflowStep] | None = None,
     additional_verbs: VerbDefinitions | None = None,
     additional_workflows: WorkflowDefinitions | None = None,
-    emit: list[TableEmitterType] | None = None,
     memory_profile: bool = False,
     is_resume_run: bool = False,
     **_kwargs: dict,
@@ -231,21 +233,18 @@ async def run_pipeline(
     """
     start_time = time.time()
 
-    context = create_run_context(storage=storage, cache=cache, stats=None)
-
     progress_reporter = progress_reporter or NullProgressReporter()
     callbacks = callbacks or ConsoleWorkflowCallbacks()
     callbacks = _create_callback_chain(callbacks, progress_reporter)
-    # TODO: This default behavior is already defined at the API level. Update tests
-    # of this function to pass in an emit type before removing this default setting.
-    emit = emit or [TableEmitterType.Parquet]
-    emitters = create_table_emitters(
-        emit,
+
+    context = create_run_context(storage=storage, cache=cache, stats=None)
+    exporter = ParquetExporter(
         context.storage,
         lambda e, s, d: cast(WorkflowCallbacks, callbacks).on_error(
-            "Error emitting table", e, s, d
+            "Error exporting table", e, s, d
         ),
     )
+
     loaded_workflows = load_workflows(
         workflows,
         additional_verbs=additional_verbs,
@@ -254,17 +253,11 @@ async def run_pipeline(
     )
     workflows_to_run = loaded_workflows.workflows
     workflow_dependencies = loaded_workflows.dependencies
-
-    if len(emitters) == 0:
-        log.info(
-            "No emitters provided. No table outputs will be generated. This is probably not correct."
-        )
-
     dataset = await _run_post_process_steps(
         input_post_process_steps, dataset, context, callbacks
     )
 
-    # Make sure the incoming data is valid
+    # ensure the incoming data is valid
     _validate_dataset(dataset)
 
     log.info("Final # of rows loaded: %s", len(dataset))
@@ -274,15 +267,9 @@ async def run_pipeline(
     try:
         await _dump_stats(context.stats, context.storage)
 
-        for idx, workflow_to_run in enumerate(workflows_to_run):
-
-            if download_task.is_stop:
-                # print("---------workflow_is_stop----------",download_task.is_stop)
-                break   
-
+        for workflow_to_run in workflows_to_run:
             # Try to flush out any intermediate dataframes
             gc.collect()
-
             last_workflow = workflow_to_run.workflow.name
 
             # workflow_name: str, num_workflows: int, finished_workflows: int, now_workflow: int
@@ -298,7 +285,7 @@ async def run_pipeline(
                 workflow_to_run.workflow,
                 context,
                 callbacks,
-                emitters,
+                exporter,
                 workflow_dependencies,
                 dataset,
                 start_time,

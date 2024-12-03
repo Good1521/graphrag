@@ -9,11 +9,10 @@ import numpy as np
 import pandas as pd
 from datashaper import VerbCallbacks
 
-from graphrag.index.cache.pipeline_cache import PipelineCache
+from graphrag.cache.pipeline_cache import PipelineCache
 from graphrag.index.config.pipeline import PipelineConfig
 from graphrag.index.flows.generate_text_embeddings import generate_text_embeddings
 from graphrag.index.run.workflow import _find_workflow_config
-from graphrag.index.storage.pipeline_storage import PipelineStorage
 from graphrag.index.update.communities import (
     _merge_and_resolve_nodes,
     _update_and_merge_communities,
@@ -24,7 +23,8 @@ from graphrag.index.update.entities import (
     _run_entity_summarization,
 )
 from graphrag.index.update.relationships import _update_and_merge_relationships
-from graphrag.logging.types import ProgressReporter
+from graphrag.logging.print_progress import ProgressReporter
+from graphrag.storage.pipeline_storage import PipelineStorage
 from graphrag.utils.storage import _load_table_from_storage
 
 
@@ -282,7 +282,7 @@ async def _update_entities(
         old_entities, delta_entities
     )
 
-    # Re-run description summarization and embeddings
+    # Re-run description summarization
     merged_entities_df = await _run_entity_summarization(
         merged_entities_df,
         config,
