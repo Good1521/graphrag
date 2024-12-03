@@ -148,8 +148,8 @@ async def get_index(download_task,root_directory,config_file,run_identifier,is_u
     print("===",emit)
     run_id = resume or time.strftime("%Y%m%d-%H%M%S")
     # 如果需要，可以加载进度报告器
-    progress_reporter = create_progress_reporter(ReporterType.RICH )
-    # progress_reporter = None
+    # progress_reporter = create_progress_reporter(ReporterType.RICH )
+    progress_reporter = None
 
     config.storage.base_dir = str(output_dir) if output_dir else config.storage.base_dir
     config.reporting.base_dir = (
