@@ -12,6 +12,7 @@ from typing import Annotated
 
 import typer
 
+from graphrag.index.emit.types import TableEmitterType
 from graphrag.logging.types import ReporterType
 from graphrag.prompt_tune.defaults import (
     MAX_TOKEN_COUNT,
@@ -137,6 +138,9 @@ def _index_cli(
     reporter: Annotated[
         ReporterType, typer.Option(help="The progress reporter to use.")
     ] = ReporterType.RICH,
+    emit: Annotated[
+        str, typer.Option(help="The data formats to emit, comma-separated.")
+    ] = TableEmitterType.Parquet.value,
     dry_run: Annotated[
         bool,
         typer.Option(
@@ -162,7 +166,7 @@ def _index_cli(
 ):
     """Build a knowledge graph index."""
     from graphrag.cli.index import index_cli
-
+    
     index_cli(
         root_dir=root,
         verbose=verbose,
@@ -171,6 +175,7 @@ def _index_cli(
         cache=cache,
         reporter=ReporterType(reporter),
         config_filepath=config,
+        emit=[TableEmitterType(value.strip()) for value in emit.split(",")],
         dry_run=dry_run,
         skip_validation=skip_validation,
         output_dir=output,
@@ -204,6 +209,9 @@ def _update_cli(
     reporter: Annotated[
         ReporterType, typer.Option(help="The progress reporter to use.")
     ] = ReporterType.RICH,
+    emit: Annotated[
+        str, typer.Option(help="The data formats to emit, comma-separated.")
+    ] = TableEmitterType.Parquet.value,
     cache: Annotated[bool, typer.Option(help="Use LLM cache.")] = True,
     skip_validation: Annotated[
         bool,
@@ -235,6 +243,7 @@ def _update_cli(
         cache=cache,
         reporter=ReporterType(reporter),
         config_filepath=config,
+        emit=[TableEmitterType(value.strip()) for value in emit.split(",")],
         skip_validation=skip_validation,
         output_dir=output,
     )

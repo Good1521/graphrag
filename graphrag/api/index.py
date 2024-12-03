@@ -10,17 +10,18 @@ Backwards compatibility is not guaranteed at this time.
 
 from pathlib import Path
 
-from graphrag.config import CacheType, GraphRagConfig
+from graphrag.config.enums import CacheType
+from graphrag.config.models.graph_rag_config import GraphRagConfig
 from graphrag.index.cache.noop_pipeline_cache import NoopPipelineCache
 from graphrag.index.create_pipeline_config import create_pipeline_config
+from graphrag.index.emit.types import TableEmitterType
 from graphrag.index.run import run_pipeline_with_config
 from graphrag.index.typing import PipelineRunResult
 from graphrag.logging.base import ProgressReporter
 from graphrag.vector_stores.factory import VectorStoreType
-from graphrag.utils.cli import redact
-from graphrag.index.validate_config import validate_config_names
 import argparse
 import asyncio 
+import time
 
 
 async def build_index(
@@ -30,6 +31,7 @@ async def build_index(
     is_resume_run: bool = False,
     memory_profile: bool = False,
     progress_reporter: ProgressReporter | None = None,
+    emit: list[TableEmitterType] = [TableEmitterType.Parquet],  # noqa: B006
 ) -> list[PipelineRunResult]:
     """Run the pipeline with the given configuration.
 
@@ -47,6 +49,9 @@ async def build_index(
         Whether to enable memory profiling.
     progress_reporter : ProgressReporter | None default=None
         The progress reporter.
+    emit : list[str]
+        The list of emitter types to emit.
+        Accepted values {"parquet", "csv"}.
 
     Returns
     -------
@@ -58,6 +63,10 @@ async def build_index(
     if is_resume_run and is_update_run:
         msg = "Cannot resume and update a run at the same time."
         raise ValueError(msg)
+
+    # Ensure Parquet is part of the emitters
+    if TableEmitterType.Parquet not in emit:
+        emit.append(TableEmitterType.Parquet)
 
     config = _patch_vector_config(config)
 
@@ -73,6 +82,7 @@ async def build_index(
         memory_profile=memory_profile,
         cache=pipeline_cache,
         progress_reporter=progress_reporter,
+        emit=emit,
         is_resume_run=is_resume_run,
         is_update_run=is_update_run,
     ):
@@ -107,31 +117,39 @@ def _patch_vector_config(config: GraphRagConfig):
 
 
 async def get_index(download_task,root_directory,config_file,run_identifier,is_update_run):
-    from graphrag.config import load_config
-    from graphrag.logging import ProgressReporter, ReporterType, create_progress_reporter
-    import time
+    from graphrag.config.load_config import load_config
+    from graphrag.config.resolve_path import resolve_paths
+    from graphrag.index.validate_config import validate_config_names
+    from graphrag.logging.factories import create_progress_reporter
+    from graphrag.logging.types import ReporterType
+    from graphrag.index.emit.types import TableEmitterType
+
 
     # 调用函数加载配置
     config = load_config(Path(root_directory), config_filepath=Path(config_file))
-    if is_update_run:
-        # Check if update storage exist, if not configure it with default values
-        if not config.update_index_storage:
-            from graphrag.config.defaults import STORAGE_TYPE, UPDATE_STORAGE_BASE_DIR
-            from graphrag.config.models.storage_config import StorageConfig
 
-            config.update_index_storage = StorageConfig(
-                type=STORAGE_TYPE,
-                base_dir=UPDATE_STORAGE_BASE_DIR,
-            )
+    if is_update_run:
+            # Check if update storage exist, if not configure it with default values
+            if not config.update_index_storage:
+                from graphrag.config.defaults import STORAGE_TYPE, UPDATE_STORAGE_BASE_DIR
+                from graphrag.config.models.storage_config import StorageConfig
+
+                config.update_index_storage = StorageConfig(
+                    type=STORAGE_TYPE,
+                    base_dir=UPDATE_STORAGE_BASE_DIR,
+                )
 
     cache = True
     output_dir = None
     skip_validation = False
     resume = None
+    emit = "parquet"
+    emit=[TableEmitterType(value.strip()) for value in emit.split(",")]
+    print("===",emit)
     run_id = resume or time.strftime("%Y%m%d-%H%M%S")
     # 如果需要，可以加载进度报告器
-    # progress_reporter = create_progress_reporter(ReporterType.RICH )
-    progress_reporter = None
+    progress_reporter = create_progress_reporter(ReporterType.RICH )
+    # progress_reporter = None
 
     config.storage.base_dir = str(output_dir) if output_dir else config.storage.base_dir
     config.reporting.base_dir = (
@@ -153,7 +171,7 @@ async def get_index(download_task,root_directory,config_file,run_identifier,is_u
         is_resume_run=False,
         memory_profile=False,
         progress_reporter=progress_reporter,
-        emit=None
+        emit=emit
     )
     download_task.finish()
     print("重建结束")
@@ -162,7 +180,7 @@ async def get_index(download_task,root_directory,config_file,run_identifier,is_u
 
 
 
-    # 存储下载任务信息的类
+# 存储下载任务信息的类
 class DownloadTask:
     def __init__(self, session_id: str, progress_queue: asyncio.Queue):
         self.session_id = session_id
@@ -206,8 +224,9 @@ class DownloadTask:
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--root_directory", type=str, default='/home/turing/graphragtest/graphrag_0.4.1/ragtest')
-    parser.add_argument("--config_file", type=str, default='/home/turing/graphragtest/graphrag_0.4.1/ragtest/settings.yaml')
+    parser.add_argument("--root_directory", type=str, default='/home/turing/graphragtest/graphrag5.0.0/ragtest')
+    # parser.add_argument("--config_file", type=str, default='/home/turing/graphragtest/graphrag5.0.0/ragtest/settings.yaml')
+    parser.add_argument("--config_file", type=str, default='/home/turing/workspace/rag/stores/default_setting/settings.yaml')
     parser.add_argument("--run_identifier", type=str, default='latest')
     parser.add_argument("--is_update_run", type=str, default=False)
 
@@ -227,3 +246,4 @@ if __name__ == "__main__":
 
     #download_task,root_directory,config_file,run_identifier
     asyncio.run(get_index(download_task,root_directory,config_file,run_identifier,is_update_run))  # 正确地运行异步主任务
+

@@ -18,11 +18,11 @@ from datashaper import (
 from graphrag.callbacks.progress_workflow_callbacks import ProgressWorkflowCallbacks
 from graphrag.index.config.pipeline import PipelineConfig
 from graphrag.index.context import PipelineRunContext
-from graphrag.index.exporter import ParquetExporter
+from graphrag.index.emit.table_emitter import TableEmitter
 from graphrag.index.run.profiling import _write_workflow_stats
+from graphrag.index.storage.pipeline_storage import PipelineStorage
 from graphrag.index.typing import PipelineRunResult
 from graphrag.logging.base import ProgressReporter
-from graphrag.storage.pipeline_storage import PipelineStorage
 from graphrag.utils.storage import _load_table_from_storage
 
 log = logging.getLogger(__name__)
@@ -43,10 +43,10 @@ async def _inject_workflow_data_dependencies(
         try:
             table = await _load_table_from_storage(f"{id}.parquet", storage)
         except ValueError:
-            # our workflows allow for transient tables, and we avoid putting those in storage
-            # however, we need to keep the table in the dependency list for proper execution order.
-            # this allows us to catch missing table errors and issue a warning for pipeline users who may genuinely have an error (which we expect to be very rare)
-            # todo: this issue will resolve itself once we remove DataShaper completely
+            # our workflows now allow transient tables, and we avoid putting those in primary storage
+            # however, we need to keep the table in the dependency list for proper execution order
+            # this allows us to catch missing table errors but emit a warning for pipeline users who may genuinely have an error (which we expect to be very rare)
+            # todo: this issue will resolve itself if we remove DataShaper completely
             log.warning(
                 "Dependency table %s not found in storage: it may be a runtime-only in-memory table. If you see further errors, this may be an actual problem.",
                 id,
@@ -55,15 +55,17 @@ async def _inject_workflow_data_dependencies(
         workflow.add_table(workflow_id, table)
 
 
-async def _export_workflow_output(
-    workflow: Workflow, exporter: ParquetExporter
+async def _emit_workflow_output(
+    workflow: Workflow, emitters: list[TableEmitter]
 ) -> pd.DataFrame:
-    """Export the output from each step of the workflow."""
+    """Emit the workflow output."""
     output = cast(pd.DataFrame, workflow.output())
-    # only write final output that is not empty (i.e. has content)
-    # NOTE: this design is intentional - it accounts for workflow steps with "side effects" that don't produce a formal output to save
+    # only write the final output if it has content
+    # this is expressly designed to allow us to create
+    # workflows with side effects that don't produce a formal output to save
     if not output.empty:
-        await exporter.export(workflow.name, output)
+        for emitter in emitters:
+            await emitter.emit(workflow.name, output)
     return output
 
 
@@ -84,7 +86,7 @@ async def _process_workflow(
     workflow: Workflow,
     context: PipelineRunContext,
     callbacks: WorkflowCallbacks,
-    exporter: ParquetExporter,
+    emitters: list[TableEmitter],
     workflow_dependencies: dict[str, list[str]],
     dataset: pd.DataFrame,
     start_time: float,
@@ -101,9 +103,9 @@ async def _process_workflow(
     )
 
     workflow_start_time = time.time()
-
-    result = await workflow.run(download_task, context, callbacks)
     
+    result = await workflow.run(download_task, context, callbacks)
+
     if download_task.is_stop:
         return None
     
@@ -117,7 +119,7 @@ async def _process_workflow(
     )
 
     # Save the output from the workflow
-    output = await _export_workflow_output(workflow, exporter)
+    output = await _emit_workflow_output(workflow, emitters)
     workflow.dispose()
     return PipelineRunResult(workflow_name, output, None)
 
