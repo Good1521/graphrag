@@ -104,7 +104,7 @@ async def _process_workflow(
 
     workflow_start_time = time.time()
     
-    result = await workflow.run(download_task, context, callbacks)
+    result = await workflow.run(context, callbacks)
 
     if download_task.is_stop:
         return None
