@@ -77,7 +77,7 @@ pyaml-env = "^1.2.1"
 python-dotenv = "^1.0.0"
 
 # Network
-tenacity = "^9.0.0"
+tenacity
 
 pydantic = "^2.9.2"
 rich = "^13.6.0"
