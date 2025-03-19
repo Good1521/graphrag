@@ -156,7 +156,7 @@ async def get_index(download_task,root_directory,config_file,method,is_update_ru
     print("配置文件是",config)
     print("config dir 是",config.config_dir)
     # """
-    logger = LoggerType("rich")  # rich, none, print
+    logger = LoggerType("none")  # rich, none, print
     progress_logger = LoggerFactory().create_logger(logger)
     info, error, success = _logger(progress_logger)
 
