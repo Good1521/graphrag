@@ -192,7 +192,7 @@ async def get_index(download_task,root_directory,config_file,method,is_update_ru
 
     _register_signal_handlers(progress_logger)
 
-    print("开始index----------------->")
+    print("开始index")
 
     # 使用配置
     try:

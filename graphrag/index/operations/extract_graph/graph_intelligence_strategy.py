@@ -101,7 +101,4 @@ async def run_extract_graph(
 
     relationships = nx.to_pandas_edgelist(graph)
 
-    print("大模型的回答是--------->",graph)
-    print("大模型的回答是--------->",graph.nodes)
-
     return EntityExtractionResult(entities, relationships, graph)

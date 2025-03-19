@@ -53,7 +53,6 @@ class SyntacticNounPhraseExtractor(BaseNounPhraseExtractor):
         )
         self.include_named_entities = include_named_entities
         self.exclude_entity_tags = exclude_entity_tags
-        print("model_nmae是", model_name)
 
         self.tokenizer = BertTokenizer.from_pretrained(model_name)
         self.model = BertForTokenClassification.from_pretrained(model_name)
@@ -64,11 +63,8 @@ class SyntacticNounPhraseExtractor(BaseNounPhraseExtractor):
         doc_chunks = self._chunk_text(text)
         filtered_noun_phrases = set()
         for chunk in doc_chunks:
-            print(chunk)
-            print("chunk的长度是-------->",len(chunk))
             entities = self.ner_pipeline(chunk)
             tokenized_length = len(self.tokenizer.tokenize(chunk))
-            print("chunk的tokenizer长度是-------->",tokenized_length)
             processed_entities = self._process_entities(entities)
 
             for entity in processed_entities:
@@ -80,8 +76,6 @@ class SyntacticNounPhraseExtractor(BaseNounPhraseExtractor):
                     if noun_phrase.upper() not in self.exclude_nouns:
                         filtered_noun_phrases.add(noun_phrase)
 
-            print("获取到的实体有------------>", list(filtered_noun_phrases))
-            print("")
         return list(filtered_noun_phrases)
     
     def _chunk_text(self, text: str, max_length: int = 512) -> list[str]:
