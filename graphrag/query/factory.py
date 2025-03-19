@@ -322,7 +322,7 @@ def get_basic_search_engine(
             token_encoder=token_encoder,
         ),
         token_encoder=token_encoder,
-        model_params={
+        llm_params={
             "max_tokens": ls_config.llm_max_tokens,  # change this based on the token limit you have on your model (if you are using a model with 8k limit, a good setting could be 1000=1500)
             "temperature": ls_config.temperature,
             "top_p": ls_config.top_p,

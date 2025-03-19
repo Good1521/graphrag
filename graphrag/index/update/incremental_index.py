@@ -263,7 +263,7 @@ async def _update_entities_and_relationships(
         config.summarize_descriptions.model_id
     )
     summarization_strategy = config.summarize_descriptions.resolved_strategy(
-        config.root_dir, summarization_llm_settings
+        config.config_dir, summarization_llm_settings
     )
 
     (

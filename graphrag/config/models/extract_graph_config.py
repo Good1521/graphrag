@@ -14,10 +14,6 @@ from graphrag.config.models.language_model_config import LanguageModelConfig
 class ExtractGraphConfig(BaseModel):
     """Configuration section for entity extraction."""
 
-    model_id: str = Field(
-        description="The model ID to use for text embeddings.",
-        default=graphrag_config_defaults.extract_graph.model_id,
-    )
     prompt: str | None = Field(
         description="The entity extraction prompt to use.",
         default=graphrag_config_defaults.extract_graph.prompt,
@@ -38,9 +34,13 @@ class ExtractGraphConfig(BaseModel):
         default=graphrag_config_defaults.extract_graph.encoding_model,
         description="The encoding model to use.",
     )
+    model_id: str = Field(
+        description="The model ID to use for text embeddings.",
+        default=graphrag_config_defaults.extract_graph.model_id,
+    )
 
     def resolved_strategy(
-        self, root_dir: str, model_config: LanguageModelConfig
+        self, config_dir: str, model_config: LanguageModelConfig
     ) -> dict:
         """Get the resolved entity extraction strategy."""
         from graphrag.index.operations.extract_graph.typing import (
@@ -51,7 +51,7 @@ class ExtractGraphConfig(BaseModel):
             "type": ExtractEntityStrategyType.graph_intelligence,
             "llm": model_config.model_dump(),
             "num_threads": model_config.concurrent_requests,
-            "extraction_prompt": (Path(root_dir) / self.prompt).read_text(
+            "extraction_prompt": (Path(config_dir) / self.prompt).read_text(
                 encoding="utf-8"
             )
             if self.prompt

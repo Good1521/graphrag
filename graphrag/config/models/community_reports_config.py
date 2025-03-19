@@ -14,10 +14,6 @@ from graphrag.config.models.language_model_config import LanguageModelConfig
 class CommunityReportsConfig(BaseModel):
     """Configuration section for community reports."""
 
-    model_id: str = Field(
-        description="The model ID to use for community reports.",
-        default=graphrag_config_defaults.community_reports.model_id,
-    )
     graph_prompt: str | None = Field(
         description="The community report extraction prompt to use for graph-based summarization.",
         default=graphrag_config_defaults.community_reports.graph_prompt,
@@ -38,9 +34,13 @@ class CommunityReportsConfig(BaseModel):
         description="The override strategy to use.",
         default=graphrag_config_defaults.community_reports.strategy,
     )
+    model_id: str = Field(
+        description="The model ID to use for community reports.",
+        default=graphrag_config_defaults.community_reports.model_id,
+    )
 
     def resolved_strategy(
-        self, root_dir: str, model_config: LanguageModelConfig
+        self, config_dir: str, model_config: LanguageModelConfig
     ) -> dict:
         """Get the resolved community report extraction strategy."""
         from graphrag.index.operations.summarize_communities.typing import (
@@ -51,12 +51,12 @@ class CommunityReportsConfig(BaseModel):
             "type": CreateCommunityReportsStrategyType.graph_intelligence,
             "llm": model_config.model_dump(),
             "num_threads": model_config.concurrent_requests,
-            "graph_prompt": (Path(root_dir) / self.graph_prompt).read_text(
+            "graph_prompt": (Path(config_dir) / self.graph_prompt).read_text(
                 encoding="utf-8"
             )
             if self.graph_prompt
             else None,
-            "text_prompt": (Path(root_dir) / self.text_prompt).read_text(
+            "text_prompt": (Path(config_dir) / self.text_prompt).read_text(
                 encoding="utf-8"
             )
             if self.text_prompt

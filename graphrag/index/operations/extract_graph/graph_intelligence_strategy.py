@@ -78,7 +78,6 @@ async def run_extract_graph(
             "completion_delimiter": completion_delimiter,
         },
     )
-
     graph = results.output
     # Map the "source_id" back to the "id" field
     for _, node in graph.nodes(data=True):  # type: ignore
@@ -93,6 +92,7 @@ async def run_extract_graph(
                 docs[int(id)].id for id in edge["source_id"].split(",")
             )
 
+
     entities = [
         ({"title": item[0], **(item[1] or {})})
         for item in graph.nodes(data=True)
@@ -100,5 +100,8 @@ async def run_extract_graph(
     ]
 
     relationships = nx.to_pandas_edgelist(graph)
+
+    print("大模型的回答是--------->",graph)
+    print("大模型的回答是--------->",graph.nodes)
 
     return EntityExtractionResult(entities, relationships, graph)

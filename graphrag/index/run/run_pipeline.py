@@ -36,6 +36,7 @@ log = logging.getLogger(__name__)
 
 
 async def run_pipeline(
+    download_task,
     pipeline: Pipeline,
     config: GraphRagConfig,
     callbacks: WorkflowCallbacks,
@@ -71,6 +72,7 @@ async def run_pipeline(
 
             # Run the pipeline on the new documents
             async for table in _run_pipeline(
+                download_task,
                 pipeline=pipeline,
                 config=config,
                 dataset=delta_dataset.new_inputs,
@@ -97,6 +99,7 @@ async def run_pipeline(
         logger.info("Running standard indexing.")
 
         async for table in _run_pipeline(
+            download_task,
             pipeline=pipeline,
             config=config,
             dataset=dataset,
@@ -109,6 +112,7 @@ async def run_pipeline(
 
 
 async def _run_pipeline(
+    download_task,
     pipeline: Pipeline,
     config: GraphRagConfig,
     dataset: pd.DataFrame,
@@ -130,16 +134,28 @@ async def _run_pipeline(
     log.info("Final # of rows loaded: %s", len(dataset))
     context.stats.num_documents = len(dataset)
     last_workflow = "starting documents"
+    total_items = sum(1 for _ in pipeline.run())  # 动态计算总数
 
     try:
         await _dump_json(context)
         await write_table_to_storage(dataset, "documents", context.storage)
+        for idx, (name, workflow_function) in enumerate(pipeline.run()):
 
-        for name, workflow_function in pipeline.run():
+            if download_task.is_stop:
+                break
+
             last_workflow = name
             progress = logger.child(name, transient=False)
             callbacks.workflow_start(name, None)
             work_time = time.time()
+
+            # workflow_name: str, num_workflows: int, finished_workflows: int, now_workflow: int
+            download_task.update_mes(name, total_items, idx, idx+1)
+
+            await download_task.progress_queue.put({"type": "workflow", "workflow_name":name, \
+                            "num_workflows":total_items,"finished_workflows":idx, "now_workflow":idx+1, 
+                            "progress": round(idx / total_items * 100, 2)})  # 将当前进度放入队列
+
             result = await workflow_function(config, context)
             progress(Progress(percent=1))
             callbacks.workflow_end(name, result)
@@ -148,6 +164,22 @@ async def _run_pipeline(
             )
 
             context.stats.workflows[name] = {"overall": time.time() - work_time}
+
+        if download_task.is_stop:
+            download_task.graceful_stop()
+            await download_task.progress_queue.put("Stop")  # 任务完成
+        else:
+            # workflow_name: str, num_workflows: int, finished_workflows: int, now_workflow: int
+            download_task.update_mes("Done", total_items, total_items, total_items)
+
+            await download_task.progress_queue.put({"type": "workflow", "workflow_name":"Done", 
+                                                    "num_workflows":total_items,"finished_workflows":total_items, 
+                                                    "now_workflow":total_items, 
+                                                    "progress": round(total_items / total_items * 100, 2)})  # 将当前进度放入队列
+            
+            await download_task.progress_queue.put("DONE")  # 任务完成
+
+            download_task.complete_finished()
 
         context.stats.total_runtime = time.time() - start_time
         await _dump_json(context)

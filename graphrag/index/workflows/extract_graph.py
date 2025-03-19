@@ -33,14 +33,14 @@ async def run_workflow(
         config.extract_graph.model_id
     )
     extraction_strategy = config.extract_graph.resolved_strategy(
-        config.root_dir, extract_graph_llm_settings
+        config.config_dir, extract_graph_llm_settings
     )
 
     summarization_llm_settings = config.get_language_model_config(
         config.summarize_descriptions.model_id
     )
     summarization_strategy = config.summarize_descriptions.resolved_strategy(
-        config.root_dir, summarization_llm_settings
+        config.config_dir, summarization_llm_settings
     )
 
     entities, relationships = await extract_graph(

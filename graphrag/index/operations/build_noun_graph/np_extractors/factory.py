@@ -48,7 +48,7 @@ class NounPhraseExtractorFactory:
                     max_word_length=config.max_word_length,
                     include_named_entities=config.include_named_entities,
                     exclude_entity_tags=config.exclude_entity_tags,
-                    exclude_pos_tags=config.exclude_pos_tags,
+                    # exclude_pos_tags=config.exclude_pos_tags,
                     exclude_nouns=exclude_nouns,
                     word_delimiter=config.word_delimiter,
                 )

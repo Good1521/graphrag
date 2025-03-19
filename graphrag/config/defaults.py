@@ -68,7 +68,7 @@ class CacheDefaults:
 class ChunksDefaults:
     """Default values for chunks."""
 
-    size: int = 1200
+    size: int = 512
     overlap: int = 100
     group_by_columns: list[str] = field(default_factory=lambda: ["id"])
     strategy = ChunkStrategyType.tokens
@@ -111,8 +111,8 @@ class DriftSearchDefaults:
     data_max_tokens: int = 12_000
     reduce_max_tokens: int = 2_000
     reduce_temperature: float = 0
-    concurrency: int = 32
-    drift_k_followups: int = 20
+    concurrency: int = 1
+    drift_k_followups: int = 5
     primer_folds: int = 5
     primer_llm_max_tokens: int = 12_000
     n_depth: int = 3
@@ -148,7 +148,7 @@ class EmbedTextDefaults:
     """Default values for embedding text."""
 
     model: str = "text-embedding-3-small"
-    batch_size: int = 16
+    batch_size: int = 15
     batch_max_tokens: int = 8191
     target = TextEmbeddingTarget.required
     model_id: str = DEFAULT_EMBEDDING_MODEL_ID
@@ -403,7 +403,7 @@ class VectorStoreDefaults:
 @dataclass
 class GraphRagConfigDefaults:
     """Default values for GraphRAG."""
-
+    config_dir: str = ""
     root_dir: str = ""
     models: dict = field(default_factory=dict)
     reporting: ReportingDefaults = field(default_factory=ReportingDefaults)

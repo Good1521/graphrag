@@ -32,7 +32,7 @@ async def run_workflow(
         config.extract_claims.model_id
     )
     extraction_strategy = config.extract_claims.resolved_strategy(
-        config.root_dir, extract_claims_llm_settings
+        config.config_dir, extract_claims_llm_settings
     )
 
     async_mode = extract_claims_llm_settings.async_mode

@@ -126,7 +126,7 @@ def _index_cli(
     ] = Path(),  # set default to current directory
     method: Annotated[
         IndexingMethod, typer.Option(help="The indexing method to use.")
-    ] = IndexingMethod.Standard,
+    ] = IndexingMethod.Fast,  # Standard, Fast
     verbose: Annotated[
         bool, typer.Option(help="Run the indexing pipeline with verbose logging")
     ] = False,
@@ -135,7 +135,8 @@ def _index_cli(
     ] = False,
     logger: Annotated[
         LoggerType, typer.Option(help="The progress logger to use.")
-    ] = LoggerType.RICH,
+    ] = "rich",
+    # rich, none, print
     dry_run: Annotated[
         bool,
         typer.Option(
@@ -196,7 +197,8 @@ def _update_cli(
     ] = Path(),  # set default to current directory
     method: Annotated[
         IndexingMethod, typer.Option(help="The indexing method to use.")
-    ] = IndexingMethod.Standard,
+    ] = IndexingMethod.Fast,
+    # Fast, Standard
     verbose: Annotated[
         bool, typer.Option(help="Run the indexing pipeline with verbose logging")
     ] = False,

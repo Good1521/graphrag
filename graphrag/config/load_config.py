@@ -188,4 +188,7 @@ def load_config(
     config_data = _parse(config_extension, config_text)
     if cli_overrides:
         _apply_overrides(config_data, cli_overrides)
+    config_dir = str(config_path.parent)
+    config_data["config_dir"] = config_dir
+    print("config_data是--------->",config_data)
     return create_graphrag_config(config_data, root_dir=str(root))
