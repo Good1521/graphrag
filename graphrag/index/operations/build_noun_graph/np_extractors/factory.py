@@ -44,7 +44,21 @@ class NounPhraseExtractorFactory:
         match np_extractor_type:
             case NounPhraseExtractorType.Syntactic:
                 return SyntacticNounPhraseExtractor(
-                    model_name=config.model_name,
+                    mode=config.mode,
+                    model_dir=config.model_dir,
+                    m_model_name=config.m_model_name,
+                    cn_model_name=config.cn_model_name,
+                    en_model_name=config.en_model_name,
+                    bio_model_name=config.bio_model_name,
+                    m_model_device=config.m_model_device,
+                    cn_model_device=config.cn_model_device,
+                    en_model_device=config.en_model_device,
+                    bio_model_device=config.bio_model_device,
+                    score_threshold=config.score_threshold,
+                    m_labels=config.m_labels,
+                    cn_labels=config.cn_labels,
+                    en_labels=config.en_labels,
+                    bio_labels=config.bio_labels,
                     max_word_length=config.max_word_length,
                     include_named_entities=config.include_named_entities,
                     exclude_entity_tags=config.exclude_entity_tags,

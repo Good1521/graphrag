@@ -86,6 +86,11 @@ async def create_community_reports_text(
         "max_input_length", graphrag_config_defaults.community_reports.max_input_length
     )
 
+    # print("communities是--->",communities)
+    # print("text_units是--->",text_units)
+    # print("nodes是--->",nodes)
+    # print("max_input_length是--->",max_input_length)
+
     local_contexts = build_local_context(
         communities, text_units, nodes, max_input_length
     )

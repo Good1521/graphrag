@@ -136,7 +136,7 @@ def _register_signal_handlers(logger: ProgressLogger):
         signal.signal(signal.SIGHUP, handle_signal)
 
 
-async def get_index(download_task,root_directory,config_file,method,is_update_run):
+async def get_index(download_task,root_directory,config_file,method,is_update_run, mode, labels, score_threshold=0.7, device1=0, device2=0):
     from graphrag.config.load_config import load_config
     from graphrag.logger.factory import LoggerFactory, LoggerType
     from graphrag.config.enums import CacheType, IndexingMethod
@@ -153,8 +153,28 @@ async def get_index(download_task,root_directory,config_file,method,is_update_ru
 
     # 调用函数加载配置
     config = load_config(Path(root_directory), config_filepath=Path(config_file), cli_overrides={})
-    print("配置文件是",config)
-    print("config dir 是",config.config_dir)
+
+    # print("配置文件是", config)
+    if mode:
+        config.extract_graph_nlp.text_analyzer.mode = mode
+
+    if labels:
+        if mode == "muilt":
+            config.extract_graph_nlp.text_analyzer.m_labels = labels[mode]
+            config.extract_graph_nlp.text_analyzer.m_model_device = int(device1)
+        elif mode == "two":
+            config.extract_graph_nlp.text_analyzer.cn_labels = labels["cn"]
+            config.extract_graph_nlp.text_analyzer.en_labels = labels["en"]
+            config.extract_graph_nlp.text_analyzer.cn_model_device = int(device1)
+            config.extract_graph_nlp.text_analyzer.en_model_device = int(device2)
+        elif mode == "bio":
+            config.extract_graph_nlp.text_analyzer.bio_labels = labels[mode]
+            config.extract_graph_nlp.text_analyzer.bio_model_device = int(device1)
+
+    config.extract_graph_nlp.text_analyzer.score_threshold = float(score_threshold)
+
+    print("------------")
+    print("配置文件是", config)
     # """
     logger = LoggerType("none")  # rich, none, print
     progress_logger = LoggerFactory().create_logger(logger)
@@ -266,7 +286,8 @@ if __name__ == "__main__":
     parser.add_argument("--config_file", type=str, default='/home/turing/workspace/rag/stores/default_setting/settings_cn.yaml')
     parser.add_argument("--is_update_run", type=str, default=False)
     parser.add_argument("--index_method", type=str, default="fast")
-
+    parser.add_argument("--bert_mode", type=str, default="muilt")
+    parser.add_argument("--ner_labels", type=str, default={"muilt": [""]})
 
     args = parser.parse_args()
 
@@ -274,6 +295,8 @@ if __name__ == "__main__":
     config_file = Path(args.config_file)
     is_update_run = args.is_update_run
     index_method = args.index_method
+    bert_mode = args.bert_mode
+    ner_labels = args.ner_labels
 
     progress_queue = asyncio.Queue()
 
@@ -283,5 +306,5 @@ if __name__ == "__main__":
     )
 
     #download_task,root_directory,config_file,run_identifier
-    asyncio.run(get_index(download_task,root_directory,config_file,index_method,is_update_run))  # 正确地运行异步主任务
+    asyncio.run(get_index(download_task,root_directory,config_file,index_method,is_update_run,bert_mode,ner_labels))  # 正确地运行异步主任务
 

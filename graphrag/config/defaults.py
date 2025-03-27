@@ -191,7 +191,29 @@ class TextAnalyzerDefaults:
     """Default values for text analyzer."""
 
     extractor_type = NounPhraseExtractorType.RegexEnglish
-    model_name: str = "en_core_web_md"
+    mode: str = "muilt"
+    model_dir: str = "test"
+    m_model_name: str = "test"
+    cn_model_name: str = "test"
+    en_model_name: str = "test"
+    bio_model_name: str = "test"
+    m_model_device: int = 0
+    cn_model_device: int = 0
+    en_model_device: int = 0
+    bio_model_device: int = 0
+    score_threshold: float = 0.8
+    m_labels: list[str] = field(
+        default_factory=lambda: []
+    )
+    cn_labels: list[str] = field(
+        default_factory=lambda: []
+    )
+    en_labels: list[str] = field(
+        default_factory=lambda: []
+    )
+    bio_labels: list[str] = field(
+        default_factory=lambda: []
+    )
     max_word_length: int = 15
     word_delimiter: str = " "
     include_named_entities: bool = True

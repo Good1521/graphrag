@@ -43,6 +43,10 @@ def build_local_context(
         }
     )
 
+    # print("------")
+    # print("prepped_text_units_df是--->", prepped_text_units_df)
+    # print("------")
+
     # merge text unit details with community membership
     context_df = community_membership_df.loc[
         :, [schemas.COMMUNITY_ID, schemas.COMMUNITY_LEVEL, schemas.TEXT_UNIT_IDS]
@@ -53,6 +57,10 @@ def build_local_context(
         on=[schemas.TEXT_UNIT_IDS, schemas.COMMUNITY_ID],
         how="left",
     )
+
+    # print("------")
+    # print("context_df是--->", context_df)
+    # print("------")
 
     context_df[schemas.ALL_CONTEXT] = context_df.apply(
         lambda x: {
