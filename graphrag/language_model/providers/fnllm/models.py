@@ -164,7 +164,7 @@ class OpenAIEmbeddingFNLLM:
         self.model = create_openai_embeddings_llm(
             model_config,
             client=client,
-            cache=model_cache,
+            cache=None,
             events=FNLLMEvents(error_handler) if error_handler else None,
         )
 

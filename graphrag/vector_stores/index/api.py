@@ -65,7 +65,6 @@ async def build_index(
 
     pipeline_config = create_pipeline_config(config)
 
-    # print(pipeline_config)
     pipeline_cache = (
         NoopPipelineCache() if config.cache.type == CacheType.none is None else None
     )

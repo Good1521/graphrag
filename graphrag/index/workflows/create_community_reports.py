@@ -100,12 +100,6 @@ async def create_community_reports(
         "max_input_length", graphrag_config_defaults.community_reports.max_input_length
     )
 
-    # print("nodes是--->",nodes)
-    # print("edges是--->",edges)
-    # print("claims是--->",claims)
-    # print("callbacks是--->",callbacks)
-    # print("max_input_length是--->",max_input_length)
-
 
     local_contexts = build_local_context(
         nodes,

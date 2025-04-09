@@ -225,7 +225,6 @@ async def run_pipeline(
         for idx, workflow_to_run in enumerate(workflows_to_run):
 
             if download_task.is_stop:
-                # print("---------workflow_is_stop----------",download_task.is_stop)
                 break   
 
             # Try to flush out any intermediate dataframes

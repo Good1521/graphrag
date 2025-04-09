@@ -116,6 +116,7 @@ class ModelManager:
         if name not in self.chat_models:
             return self.register_chat(name, model_type, **chat_kwargs)
         return self.chat_models[name]
+    
 
     def get_or_create_embedding_model(
         self, name: str, model_type: str, **embedding_kwargs: Any

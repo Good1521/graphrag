@@ -37,6 +37,7 @@ class VectorStoreFactory:
     def create_vector_store(
         cls, vector_store_type: VectorStoreType | str, kwargs: dict
     ) -> BaseVectorStore:
+        print("传入的参数是", kwargs)
         """Create or get a vector store from the provided type."""
         match vector_store_type:
             case VectorStoreType.LanceDB:

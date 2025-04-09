@@ -141,7 +141,7 @@ async def get_index(download_task,root_directory,config_file,method,is_update_ru
     from graphrag.logger.factory import LoggerFactory, LoggerType
     from graphrag.config.enums import CacheType, IndexingMethod
     from graphrag.config.logging import enable_logging_with_config
-    from graphrag.index.validate_config import validate_config_names
+    from graphrag.index.validate_config import async_validate_config_names
     from graphrag.utils.cli import redact
 
     if method == "fast":
@@ -173,8 +173,8 @@ async def get_index(download_task,root_directory,config_file,method,is_update_ru
 
     config.extract_graph_nlp.text_analyzer.score_threshold = float(score_threshold)
 
-    print("------------")
-    print("配置文件是", config)
+    # print("------------")
+    # print("配置文件是", config)
     # """
     logger = LoggerType("none")  # rich, none, print
     progress_logger = LoggerFactory().create_logger(logger)
@@ -195,10 +195,15 @@ async def get_index(download_task,root_directory,config_file,method,is_update_ru
             True,
         )
 
-    skip_validation = True
+    skip_validation = False
     if not skip_validation:
-        validate_config_names(progress_logger, config)
+        if_model_work = await async_validate_config_names(progress_logger, config)
 
+    if not if_model_work:
+        print("验证大模型发生了错误连接失败------->", if_model_work)
+        download_task.task_exception()
+        return None
+    
     dry_run = False
     info(f"Starting pipeline run. {dry_run=}", verbose)
     info(
@@ -225,7 +230,9 @@ async def get_index(download_task,root_directory,config_file,method,is_update_ru
             progress_logger=progress_logger,
         )
     except Exception as e:
+        print("graphrag发生了错误------>", e)
         download_task.task_exception()
+        sys.exit(1)
 
 
     download_task.finish()

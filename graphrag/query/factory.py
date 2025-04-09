@@ -4,7 +4,7 @@
 """Query Factory methods to support CLI."""
 
 import tiktoken
-
+import json
 from graphrag.callbacks.query_callbacks import QueryCallbacks
 from graphrag.config.models.graph_rag_config import GraphRagConfig
 from graphrag.data_model.community import Community
@@ -54,21 +54,25 @@ def get_local_search_engine(
             len(reports) + len(entities) + len(relationships) + len(covariates)
         )
 
+    chat_model_name = {"api_base": model_settings.api_base,"api_key": model_settings.api_key,"model":model_settings.model}
     chat_model = ModelManager().get_or_create_chat_model(
-        name="local_search_chat",
+        name=json.dumps(chat_model_name),
         model_type=model_settings.type,
         config=model_settings,
     )
 
+
     embedding_settings = config.get_language_model_config(
         config.local_search.embedding_model_id
     )
+    emb_model_name = {"api_base": embedding_settings.api_base,"api_key": embedding_settings.api_key,"model":embedding_settings.model}
     if embedding_settings.max_retries == -1:
         embedding_settings.max_retries = (
             len(reports) + len(entities) + len(relationships)
         )
+
     embedding_model = ModelManager().get_or_create_embedding_model(
-        name="local_search_embedding",
+        name=json.dumps(emb_model_name),
         model_type=embedding_settings.type,
         config=embedding_settings,
     )
