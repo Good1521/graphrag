@@ -79,27 +79,27 @@ class SyntacticNounPhraseExtractor(BaseNounPhraseExtractor):
         print("mode是", self.mode)
 
         if self.mode == "muilt":
-            self.m_tokenizer = BertTokenizer.from_pretrained(m_model_path,local_files_only=True)
-            self.m_model = BertForTokenClassification.from_pretrained(m_model_path,local_files_only=True)
+            self.m_tokenizer = BertTokenizer.from_pretrained(m_model_path)
+            self.m_model = BertForTokenClassification.from_pretrained(m_model_path)
             self.m_ner_pipeline = pipeline("ner", model=self.m_model, tokenizer=self.m_tokenizer, device=m_model_device)
             
             self.m_labels = m_labels
 
         elif self.mode == "two":
-            self.cn_tokenizer = BertTokenizer.from_pretrained(cn_model_path,local_files_only=True)
-            self.cn_model = BertForTokenClassification.from_pretrained(cn_model_path,local_files_only=True)
+            self.cn_tokenizer = BertTokenizer.from_pretrained(cn_model_path)
+            self.cn_model = BertForTokenClassification.from_pretrained(cn_model_path)
             self.cn_ner_pipeline = pipeline("ner", model=self.cn_model, tokenizer=self.cn_tokenizer, device=cn_model_device)
 
-            self.en_tokenizer = BertTokenizer.from_pretrained(en_model_path,local_files_only=True)
-            self.en_model = BertForTokenClassification.from_pretrained(en_model_path,local_files_only=True)
+            self.en_tokenizer = BertTokenizer.from_pretrained(en_model_path)
+            self.en_model = BertForTokenClassification.from_pretrained(en_model_path)
             self.en_ner_pipeline = pipeline("ner", model=self.en_model, tokenizer=self.en_tokenizer, device=en_model_device)
             
             self.cn_labels = cn_labels
             self.en_labels = en_labels      
 
         elif self.mode == "bio":
-            self.bio_tokenizer = BertTokenizer.from_pretrained(bio_model_path,local_files_only=True)
-            self.bio_model = BertForTokenClassification.from_pretrained(bio_model_path,local_files_only=True)
+            self.bio_tokenizer = BertTokenizer.from_pretrained(bio_model_path)
+            self.bio_model = BertForTokenClassification.from_pretrained(bio_model_path)
             self.bio_ner_pipeline = pipeline("ner", model=self.bio_model, tokenizer=self.bio_tokenizer, device=bio_model_device)
             
             self.bio_labels = bio_labels

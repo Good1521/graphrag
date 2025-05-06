@@ -26,6 +26,7 @@ from pathlib import Path
 import argparse
 import asyncio 
 import sys
+import os
 
 log = logging.getLogger(__name__)
 
@@ -136,7 +137,7 @@ def _register_signal_handlers(logger: ProgressLogger):
         signal.signal(signal.SIGHUP, handle_signal)
 
 
-async def get_index(download_task,root_directory,config_file,method,is_update_run, mode, labels, score_threshold=0.7, device1=0, device2=0):
+async def get_index(download_task,ge_workspace_path,root_directory,config_file,method,is_update_run, mode, labels, score_threshold=0.7, device1=0, device2=0):
     from graphrag.config.load_config import load_config
     from graphrag.logger.factory import LoggerFactory, LoggerType
     from graphrag.config.enums import CacheType, IndexingMethod
@@ -157,6 +158,10 @@ async def get_index(download_task,root_directory,config_file,method,is_update_ru
     # print("配置文件是", config)
     if mode:
         config.extract_graph_nlp.text_analyzer.mode = mode
+
+    if ge_workspace_path:
+        curren_model_path = config.extract_graph_nlp.text_analyzer.model_dir
+        config.extract_graph_nlp.text_analyzer.model_dir = os.path.join(ge_workspace_path, curren_model_path)
 
     if labels:
         if mode == "muilt":
