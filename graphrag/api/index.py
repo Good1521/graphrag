@@ -72,7 +72,7 @@ async def build_index(
     if memory_profile:
         log.warning("New pipeline does not yet support memory profiling.")
 
-    pipeline = PipelineFactory.create_pipeline(config, method)
+    pipeline = PipelineFactory.create_pipeline(config, method, is_update_run)
 
     workflow_callbacks.pipeline_start(pipeline.names())
 
@@ -137,7 +137,7 @@ def _register_signal_handlers(logger: ProgressLogger):
         signal.signal(signal.SIGHUP, handle_signal)
 
 
-async def get_index(download_task,ge_workspace_path,root_directory,config_file,method,is_update_run, mode, labels, score_threshold=0.7, device1=0, device2=0):
+async def get_index(download_task,get_workspace_path,root_directory,config_file,method,is_update_run, mode, labels, score_threshold=0.7, device1=0, device2=0):
     from graphrag.config.load_config import load_config
     from graphrag.logger.factory import LoggerFactory, LoggerType
     from graphrag.config.enums import CacheType, IndexingMethod
@@ -159,21 +159,25 @@ async def get_index(download_task,ge_workspace_path,root_directory,config_file,m
     if mode:
         config.extract_graph_nlp.text_analyzer.mode = mode
 
-    if ge_workspace_path:
+    if get_workspace_path:
         curren_model_path = config.extract_graph_nlp.text_analyzer.model_dir
-        config.extract_graph_nlp.text_analyzer.model_dir = os.path.join(ge_workspace_path, curren_model_path)
+        config.extract_graph_nlp.text_analyzer.model_dir = os.path.join(get_workspace_path, curren_model_path)
 
     if labels:
         if mode == "muilt":
-            config.extract_graph_nlp.text_analyzer.m_labels = labels[mode]
+            if labels[mode]:
+                config.extract_graph_nlp.text_analyzer.m_labels = labels[mode]
             config.extract_graph_nlp.text_analyzer.m_model_device = int(device1)
         elif mode == "two":
-            config.extract_graph_nlp.text_analyzer.cn_labels = labels["cn"]
-            config.extract_graph_nlp.text_analyzer.en_labels = labels["en"]
+            if labels["cn"]:
+                config.extract_graph_nlp.text_analyzer.cn_labels = labels["cn"]
+            if labels["en"]:
+                config.extract_graph_nlp.text_analyzer.en_labels = labels["en"]
             config.extract_graph_nlp.text_analyzer.cn_model_device = int(device1)
             config.extract_graph_nlp.text_analyzer.en_model_device = int(device2)
         elif mode == "bio":
-            config.extract_graph_nlp.text_analyzer.bio_labels = labels[mode]
+            if labels[mode]:
+                config.extract_graph_nlp.text_analyzer.bio_labels = labels[mode]
             config.extract_graph_nlp.text_analyzer.bio_model_device = int(device1)
 
     config.extract_graph_nlp.text_analyzer.score_threshold = float(score_threshold)
@@ -294,7 +298,7 @@ class DownloadTask:
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--root_directory", type=str, default='/home/turing/graphragtest/graphrag_2.0.0/ragtest')
+    parser.add_argument("--root_directory", type=str, default='/home/turing/graphragtest/graphrag_230/ragtest')
     parser.add_argument("--config_file", type=str, default='/home/turing/workspace/rag/stores/default_setting/settings_cn.yaml')
     parser.add_argument("--is_update_run", type=str, default=False)
     parser.add_argument("--index_method", type=str, default="fast")
@@ -316,7 +320,6 @@ if __name__ == "__main__":
         session_id="123456789",
         progress_queue=progress_queue
     )
-
-    #download_task,root_directory,config_file,run_identifier
-    asyncio.run(get_index(download_task,root_directory,config_file,index_method,is_update_run,bert_mode,ner_labels))  # 正确地运行异步主任务
-
+    get_workspace_path="/home/turing/workspace/rag"
+    #(download_task,ge_workspace_path,root_directory,config_file,method,is_update_run, mode, labels, score_threshold=0.7, device1=0, device2=0)
+    asyncio.run(get_index(download_task,get_workspace_path,root_directory,config_file,index_method,is_update_run,bert_mode,ner_labels))  # 正确地运行异步主任务

@@ -45,37 +45,7 @@ async def embed_text(
     id_column: str = "id",
     title_column: str | None = None,
 ):
-    """
-    Embed a piece of text into a vector space. The operation outputs a new column containing a mapping between doc_id and vector.
-
-    ## Usage
-    ```yaml
-    args:
-        column: text # The name of the column containing the text to embed, this can either be a column with text, or a column with a list[tuple[doc_id, str]]
-        to: embedding # The name of the column to output the embedding to
-        strategy: <strategy config> # See strategies section below
-    ```
-
-    ## Strategies
-    The text embed operation uses a strategy to embed the text. The strategy is an object which defines the strategy to use. The following strategies are available:
-
-    ### openai
-    This strategy uses openai to embed a piece of text. In particular it uses a LLM to embed a piece of text. The strategy config is as follows:
-
-    ```yaml
-    strategy:
-        type: openai
-        llm: # The configuration for the LLM
-            type: openai_embedding # the type of llm to use, available options are: openai_embedding, azure_openai_embedding
-            api_key: !ENV ${GRAPHRAG_OPENAI_API_KEY} # The api key to use for openai
-            model: !ENV ${GRAPHRAG_OPENAI_MODEL:gpt-4-turbo-preview} # The model to use for openai
-            max_tokens: !ENV ${GRAPHRAG_MAX_TOKENS:6000} # The max tokens to use for openai
-            organization: !ENV ${GRAPHRAG_OPENAI_ORGANIZATION} # The organization to use for openai
-        vector_store: # The optional configuration for the vector store
-            type: lancedb # The type of vector store to use, available options are: azure_ai_search, lancedb
-            <...>
-    ```
-    """
+    """Embed a piece of text into a vector space. The operation outputs a new column containing a mapping between doc_id and vector."""
     vector_store_config = strategy.get("vector_store")
 
     if vector_store_config:
@@ -138,10 +108,6 @@ async def _text_embed_with_vector_store(
     strategy_type = strategy["type"]
     strategy_exec = load_strategy(strategy_type)
     strategy_config = {**strategy}
-
-    # if max_retries is not set, inject a dynamically assigned value based on the total number of expected LLM calls to be made
-    if strategy_config.get("llm") and strategy_config["llm"]["max_retries"] == -1:
-        strategy_config["llm"]["max_retries"] = len(input)
 
     # Get vector-storage configuration
     insert_batch_size: int = (

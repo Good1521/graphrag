@@ -45,10 +45,6 @@ async def summarize_communities(
     strategy_exec = load_strategy(strategy["type"])
     strategy_config = {**strategy}
 
-    # if max_retries is not set, inject a dynamically assigned value based on the total number of expected LLM calls to be made
-    if strategy_config.get("llm") and strategy_config["llm"]["max_retries"] == -1:
-        strategy_config["llm"]["max_retries"] = len(nodes)
-
     community_hierarchy = (
         communities.explode("children")
         .rename({"children": "sub_community"}, axis=1)
@@ -64,7 +60,7 @@ async def summarize_communities(
             community_hierarchy_df=community_hierarchy,
             local_context_df=local_contexts,
             level=level,
-            max_tokens=max_input_length,
+            max_context_tokens=max_input_length,
         )
         level_contexts.append(level_context)
 

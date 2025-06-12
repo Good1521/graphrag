@@ -79,6 +79,8 @@ mkdocs
 fnllm
 typer
 spacy
+kwargs
+ollama
 
 # Library Methods
 iterrows
@@ -190,6 +192,7 @@ Arxiv
 kwds
 jsons
 txts
+byog
 
 # Dulce
 astrotechnician
@@ -200,3 +203,8 @@ unnavigated
 # Names
 Hochul
 Ashish
+
+#unified-search
+apos
+dearmor
+venv

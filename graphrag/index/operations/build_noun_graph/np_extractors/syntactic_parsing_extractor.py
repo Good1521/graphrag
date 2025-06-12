@@ -76,7 +76,6 @@ class SyntacticNounPhraseExtractor(BaseNounPhraseExtractor):
         self.exclude_entity_tags = exclude_entity_tags
 
         self.mode = mode
-        print("mode是", self.mode)
 
         if self.mode == "muilt":
             self.m_tokenizer = BertTokenizer.from_pretrained(m_model_path)
@@ -134,55 +133,54 @@ class SyntacticNounPhraseExtractor(BaseNounPhraseExtractor):
 
         """提取文本中的名词短语。"""
         doc_chunks = self._chunk_text(tokenizer, lang_text, text, max_length)
-
         filtered_noun_phrases = set()
-        for index, chunk in enumerate(doc_chunks):
-            if self.mode == "muilt":
-                ner_pipeline = self.m_ner_pipeline
-            elif self.mode == "two":
-                lang_chunk = detect(chunk)
-                if lang_chunk == "zh-cn":
-                    ner_pipeline = self.cn_ner_pipeline
-                elif lang_chunk == "en":
-                    ner_pipeline = self.en_ner_pipeline
-                else:
-                    ner_pipeline = self.cn_ner_pipeline
-            elif self.mode == "bio":
-                ner_pipeline = self.bio_ner_pipeline
+        if self.mode == "muilt":
+            ner_pipeline = self.m_ner_pipeline
+            all_entities = ner_pipeline(doc_chunks)
+            all_chunks = doc_chunks
+        elif self.mode == "two":
+            lang_detected_chunks = [detect(chunk) for chunk in doc_chunks]
+            zh_chunks = [chunk for chunk, lang in zip(doc_chunks, lang_detected_chunks) if lang == "zh-cn"]
+            en_chunks = [chunk for chunk, lang in zip(doc_chunks, lang_detected_chunks) if lang == "en"]
+            other_chunks = [chunk for chunk, lang in zip(doc_chunks, lang_detected_chunks) if lang not in ("zh-cn", "en")]
+            
+            # 分语言批量推理
+            zh_entities = self.cn_ner_pipeline(zh_chunks)
+            en_entities = self.en_ner_pipeline(en_chunks)
+            other_entities = self.cn_ner_pipeline(other_chunks)
 
+            # 合并为统一序列
+            all_chunks = zh_chunks + en_chunks + other_chunks
+            all_entities = zh_entities + en_entities + other_entities
+        elif self.mode == "bio":
+            ner_pipeline = self.bio_ner_pipeline
+            all_entities = ner_pipeline(doc_chunks)
+            all_chunks = doc_chunks
 
-            entities = ner_pipeline(chunk)
-
+        for chunk, entities in zip(all_chunks, all_entities):
             if self.mode == "muilt":
                 processed_entities = self._muilt_process_entities(self.m_labels, entities)
-
             elif self.mode == "two":
-                if lang_chunk == "zh-cn":
+                lang = detect(chunk)
+                if lang == "zh-cn":
                     processed_entities = self._cn_process_entities(self.cn_labels, entities)
-                elif lang_chunk == "en":
-                    processed_entities = self._muilt_process_entities(self.en_labels,entities)
+                elif lang == "en":
+                    processed_entities = self._muilt_process_entities(self.en_labels, entities)
                 else:
                     processed_entities = self._cn_process_entities(self.cn_labels, entities)
-
             elif self.mode == "bio":
                 processed_entities = self._muilt_process_entities(self.bio_labels, entities)
 
-            
             for entity in processed_entities:
                 if entity['entity_group'] not in self.exclude_entity_tags:
                     noun_phrase = entity['word']
-                    # 过滤掉 [UNK] 或者类似的无效标记
                     if "[UNK]" in noun_phrase:
                         continue
                     if noun_phrase.upper() not in self.exclude_nouns:
                         filtered_noun_phrases.add(noun_phrase)
-        
-        # print("----------------")
-        # print("文本是", text)
-        # print("chunk获取到的实体是",list(filtered_noun_phrases))
-        # print("----------------")
 
         return list(filtered_noun_phrases)
+
     
     def _chunk_text(self, tokenizer, lang, text: str, max_length: int = 512) -> list[str]:
         if lang == "zh-cn":
@@ -308,7 +306,6 @@ class SyntacticNounPhraseExtractor(BaseNounPhraseExtractor):
     def is_chinese(self, text):
         """ 判断字符串是否包含中文字符 """
         flag = bool(re.search(r'[\u4e00-\u9fa5]', text))
-        # print(f"文字{text} 的语言是否为中文 {flag}")
         return flag
 
     def is_word(self, text):

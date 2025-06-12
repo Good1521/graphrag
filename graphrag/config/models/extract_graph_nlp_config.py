@@ -62,7 +62,7 @@ class TextAnalyzerConfig(BaseModel):
     )
     m_labels: list[str] = Field(
         description="Categories filtered by Muilt Language BERT model NER.",
-        default_factory=lambda: graphrag_config_defaults.extract_graph_nlp.text_analyzer.cn_labels,
+        default_factory=lambda: graphrag_config_defaults.extract_graph_nlp.text_analyzer.m_labels,
     )
     cn_labels: list[str] = Field(
         description="Categories filtered by Chinese BERT model NER.",

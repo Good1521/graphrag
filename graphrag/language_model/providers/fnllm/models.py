@@ -62,6 +62,7 @@ class OpenAIChatFNLLM:
             cache=model_cache,
             events=FNLLMEvents(error_handler) if error_handler else None,
         )
+        self.config = config
 
     async def achat(
         self, prompt: str, history: list | None = None, **kwargs
@@ -82,7 +83,10 @@ class OpenAIChatFNLLM:
         else:
             response = await self.model(prompt, history=history, **kwargs)
         return BaseModelResponse(
-            output=BaseModelOutput(content=response.output.content),
+            output=BaseModelOutput(
+                content=response.output.content,
+                full_response=response.output.raw_model.to_dict(),
+            ),
             parsed_response=response.parsed_json,
             history=response.history,
             cache_hit=response.cache_hit,
@@ -167,6 +171,7 @@ class OpenAIEmbeddingFNLLM:
             cache=None,
             events=FNLLMEvents(error_handler) if error_handler else None,
         )
+        self.config = config
 
     async def aembed_batch(self, text_list: list[str], **kwargs) -> list[list[float]]:
         """
@@ -258,6 +263,7 @@ class AzureOpenAIChatFNLLM:
             cache=model_cache,
             events=FNLLMEvents(error_handler) if error_handler else None,
         )
+        self.config = config
 
     async def achat(
         self, prompt: str, history: list | None = None, **kwargs
@@ -279,7 +285,10 @@ class AzureOpenAIChatFNLLM:
         else:
             response = await self.model(prompt, history=history, **kwargs)
         return BaseModelResponse(
-            output=BaseModelOutput(content=response.output.content),
+            output=BaseModelOutput(
+                content=response.output.content,
+                full_response=response.output.raw_model.to_dict(),
+            ),
             parsed_response=response.parsed_json,
             history=response.history,
             cache_hit=response.cache_hit,
@@ -365,6 +374,7 @@ class AzureOpenAIEmbeddingFNLLM:
             cache=model_cache,
             events=FNLLMEvents(error_handler) if error_handler else None,
         )
+        self.config = config
 
     async def aembed_batch(self, text_list: list[str], **kwargs) -> list[list[float]]:
         """

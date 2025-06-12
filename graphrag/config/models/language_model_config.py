@@ -3,6 +3,8 @@
 
 """Language model configuration."""
 
+from typing import Literal
+
 import tiktoken
 from pydantic import BaseModel, Field, model_validator
 
@@ -109,34 +111,6 @@ class LanguageModelConfig(BaseModel):
         if self.encoding_model.strip() == "":
             self.encoding_model = tiktoken.encoding_name_for_model(self.model)
 
-    max_tokens: int = Field(
-        description="The maximum number of tokens to generate.",
-        default=language_model_defaults.max_tokens,
-    )
-    temperature: float = Field(
-        description="The temperature to use for token generation.",
-        default=language_model_defaults.temperature,
-    )
-    top_p: float = Field(
-        description="The top-p value to use for token generation.",
-        default=language_model_defaults.top_p,
-    )
-    n: int = Field(
-        description="The number of completions to generate.",
-        default=language_model_defaults.n,
-    )
-    frequency_penalty: float = Field(
-        description="The frequency penalty to use for token generation.",
-        default=language_model_defaults.frequency_penalty,
-    )
-    presence_penalty: float = Field(
-        description="The presence penalty to use for token generation.",
-        default=language_model_defaults.presence_penalty,
-    )
-    request_timeout: float = Field(
-        description="The request timeout to use.",
-        default=language_model_defaults.request_timeout,
-    )
     api_base: str | None = Field(
         description="The base URL for the LLM API.",
         default=language_model_defaults.api_base,
@@ -216,14 +190,46 @@ class LanguageModelConfig(BaseModel):
         description="Whether the model supports JSON output mode.",
         default=language_model_defaults.model_supports_json,
     )
-    tokens_per_minute: int = Field(
+    request_timeout: float = Field(
+        description="The request timeout to use.",
+        default=language_model_defaults.request_timeout,
+    )
+    tokens_per_minute: int | Literal["auto"] | None = Field(
         description="The number of tokens per minute to use for the LLM service.",
         default=language_model_defaults.tokens_per_minute,
     )
-    requests_per_minute: int = Field(
+
+    def _validate_tokens_per_minute(self) -> None:
+        """Validate the tokens per minute.
+
+        Raises
+        ------
+        ValueError
+            If the tokens per minute is less than 0.
+        """
+        # If the value is a number, check if it is less than 1
+        if isinstance(self.tokens_per_minute, int) and self.tokens_per_minute < 1:
+            msg = f"Tokens per minute must be a non zero positive number, 'auto' or null. Suggested value: {language_model_defaults.tokens_per_minute}."
+            raise ValueError(msg)
+
+    requests_per_minute: int | Literal["auto"] | None = Field(
         description="The number of requests per minute to use for the LLM service.",
         default=language_model_defaults.requests_per_minute,
     )
+
+    def _validate_requests_per_minute(self) -> None:
+        """Validate the requests per minute.
+
+        Raises
+        ------
+        ValueError
+            If the requests per minute is less than 0.
+        """
+        # If the value is a number, check if it is less than 1
+        if isinstance(self.requests_per_minute, int) and self.requests_per_minute < 1:
+            msg = f"Requests per minute must be a non zero positive number, 'auto' or null. Suggested value: {language_model_defaults.requests_per_minute}."
+            raise ValueError(msg)
+
     retry_strategy: str = Field(
         description="The retry strategy to use for the LLM service.",
         default=language_model_defaults.retry_strategy,
@@ -232,6 +238,19 @@ class LanguageModelConfig(BaseModel):
         description="The maximum number of retries to use for the LLM service.",
         default=language_model_defaults.max_retries,
     )
+
+    def _validate_max_retries(self) -> None:
+        """Validate the maximum retries.
+
+        Raises
+        ------
+        ValueError
+            If the maximum retries is less than 0.
+        """
+        if self.max_retries < 1:
+            msg = f"Maximum retries must be greater than or equal to 1. Suggested value: {language_model_defaults.max_retries}."
+            raise ValueError(msg)
+
     max_retry_wait: float = Field(
         description="The maximum retry wait to use for the LLM service.",
         default=language_model_defaults.max_retry_wait,
@@ -240,12 +259,44 @@ class LanguageModelConfig(BaseModel):
         description="Whether to use concurrent requests for the LLM service.",
         default=language_model_defaults.concurrent_requests,
     )
+    async_mode: AsyncType = Field(
+        description="The async mode to use.", default=language_model_defaults.async_mode
+    )
     responses: list[str | BaseModel] | None = Field(
         default=language_model_defaults.responses,
         description="Static responses to use in mock mode.",
     )
-    async_mode: AsyncType = Field(
-        description="The async mode to use.", default=language_model_defaults.async_mode
+    max_tokens: int | None = Field(
+        description="The maximum number of tokens to generate.",
+        default=language_model_defaults.max_tokens,
+    )
+    temperature: float = Field(
+        description="The temperature to use for token generation.",
+        default=language_model_defaults.temperature,
+    )
+    max_completion_tokens: int | None = Field(
+        description="The maximum number of tokens to consume. This includes reasoning tokens for the o* reasoning models.",
+        default=language_model_defaults.max_completion_tokens,
+    )
+    reasoning_effort: str | None = Field(
+        description="Level of effort OpenAI reasoning models should expend. Supported options are 'low', 'medium', 'high'; and OAI defaults to 'medium'.",
+        default=language_model_defaults.reasoning_effort,
+    )
+    top_p: float = Field(
+        description="The top-p value to use for token generation.",
+        default=language_model_defaults.top_p,
+    )
+    n: int = Field(
+        description="The number of completions to generate.",
+        default=language_model_defaults.n,
+    )
+    frequency_penalty: float = Field(
+        description="The frequency penalty to use for token generation.",
+        default=language_model_defaults.frequency_penalty,
+    )
+    presence_penalty: float = Field(
+        description="The presence penalty to use for token generation.",
+        default=language_model_defaults.presence_penalty,
     )
 
     def _validate_azure_settings(self) -> None:
@@ -269,6 +320,9 @@ class LanguageModelConfig(BaseModel):
         self._validate_type()
         self._validate_auth_type()
         self._validate_api_key()
+        self._validate_tokens_per_minute()
+        self._validate_requests_per_minute()
+        self._validate_max_retries()
         self._validate_azure_settings()
         self._validate_encoding_model()
         return self

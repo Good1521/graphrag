@@ -190,4 +190,5 @@ def load_config(
         _apply_overrides(config_data, cli_overrides)
     config_dir = str(config_path.parent)
     config_data["config_dir"] = config_dir
+    print(config_data)
     return create_graphrag_config(config_data, root_dir=str(root))

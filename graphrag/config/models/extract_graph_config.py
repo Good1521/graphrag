@@ -14,6 +14,10 @@ from graphrag.config.models.language_model_config import LanguageModelConfig
 class ExtractGraphConfig(BaseModel):
     """Configuration section for entity extraction."""
 
+    model_id: str = Field(
+        description="The model ID to use for text embeddings.",
+        default=graphrag_config_defaults.extract_graph.model_id,
+    )
     prompt: str | None = Field(
         description="The entity extraction prompt to use.",
         default=graphrag_config_defaults.extract_graph.prompt,
@@ -29,14 +33,6 @@ class ExtractGraphConfig(BaseModel):
     strategy: dict | None = Field(
         description="Override the default entity extraction strategy",
         default=graphrag_config_defaults.extract_graph.strategy,
-    )
-    encoding_model: str | None = Field(
-        default=graphrag_config_defaults.extract_graph.encoding_model,
-        description="The encoding model to use.",
-    )
-    model_id: str = Field(
-        description="The model ID to use for text embeddings.",
-        default=graphrag_config_defaults.extract_graph.model_id,
     )
 
     def resolved_strategy(
@@ -57,5 +53,4 @@ class ExtractGraphConfig(BaseModel):
             if self.prompt
             else None,
             "max_gleanings": self.max_gleanings,
-            "encoding_name": model_config.encoding_model,
         }

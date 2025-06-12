@@ -438,13 +438,10 @@ def local_search_streaming(
     msg = f"Vector Store Args: {redact(vector_store_args)}"
 
     logger.info(msg)
-    print("向量存储的信息是", vector_store_args)
     description_embedding_store = get_embedding_store(
         config_args=vector_store_args,
         embedding_name=entity_description_embedding,
     )
-
-    print("emb的记录是", description_embedding_store)
 
     entities_ = read_indexer_entities(entities, communities, community_level)
     covariates_ = read_indexer_covariates(covariates) if covariates is not None else []
