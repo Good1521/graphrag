@@ -58,7 +58,6 @@ async def extract_graph_nlp(
     )
 
     # add in any other columns required by downstream workflows
-    extracted_nodes["type"] = "NOUN PHRASE"
     extracted_nodes["description"] = ""
     extracted_edges["description"] = ""
 

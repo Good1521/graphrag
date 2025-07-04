@@ -31,6 +31,7 @@ async def build_noun_graph(
     nodes_df = await _extract_nodes(
         text_units, text_analyzer, num_threads=num_threads, cache=cache
     )
+    print("nodes的结果是", nodes_df)
     edges_df = _extract_edges(nodes_df, normalize_edge_weights=normalize_edge_weights)
     return (nodes_df, edges_df)
 
@@ -68,18 +69,20 @@ async def _extract_nodes(
     )
 
     noun_node_df = text_unit_df.explode("noun_phrases")
-    noun_node_df = noun_node_df.rename(
-        columns={"noun_phrases": "title", "id": "text_unit_id"}
-    )
 
-    # group by title and count the number of text units
+    noun_node_df = noun_node_df[noun_node_df["noun_phrases"].notnull()]
+    noun_node_df["title"] = noun_node_df["noun_phrases"].apply(lambda x: x["title"])
+    noun_node_df["type"] = noun_node_df["noun_phrases"].apply(lambda x: x["type"])
+    noun_node_df = noun_node_df.rename(columns={"id": "text_unit_id"})
+
     grouped_node_df = (
-        noun_node_df.groupby("title").agg({"text_unit_id": list}).reset_index()
+        noun_node_df.groupby(["title", "type"]).agg({"text_unit_id": list}).reset_index()
     )
     grouped_node_df = grouped_node_df.rename(columns={"text_unit_id": "text_unit_ids"})
     grouped_node_df["frequency"] = grouped_node_df["text_unit_ids"].apply(len)
-    grouped_node_df = grouped_node_df[["title", "frequency", "text_unit_ids"]]
-    return grouped_node_df.loc[:, ["title", "frequency", "text_unit_ids"]]
+    grouped_node_df = grouped_node_df[["title", "type", "frequency", "text_unit_ids"]]
+
+    return grouped_node_df.loc[:, ["title", "type", "frequency", "text_unit_ids"]]
 
 
 def _extract_edges(

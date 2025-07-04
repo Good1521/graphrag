@@ -98,7 +98,6 @@ async def build_index(
 def display_pipeline_results(outputs: list[PipelineRunResult]):
     for output in outputs:
         if output.result is not None and not output.result.empty:
-            # 处理结果
             print(output.result)
         else:
             print("No results for this output")
@@ -134,20 +133,13 @@ async def get_index(download_task,root_directory,config_file,run_identifier):
         emit=None
     )
     download_task.finish()
-    # print("---------is_downloading----------",download_task.is_downloading)
-    print("ok")
     return outputs
         
         
 
 async def monitor_progress(progress_queue):
-    # workflow_name = None  # 初始化
-    # verb_name = None  # 初始化
-    # now_workflows = None  # 初始化
-
     while True:
         progress = await progress_queue.get()
-        # print(progress)
 
         if progress == "DONE":
             print()

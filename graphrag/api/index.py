@@ -155,7 +155,6 @@ async def get_index(download_task,get_workspace_path,root_directory,config_file,
     # 调用函数加载配置
     config = load_config(Path(root_directory), config_filepath=Path(config_file), cli_overrides={})
 
-    # print("配置文件是", config)
     if mode:
         config.extract_graph_nlp.text_analyzer.mode = mode
 
@@ -182,9 +181,6 @@ async def get_index(download_task,get_workspace_path,root_directory,config_file,
 
     config.extract_graph_nlp.text_analyzer.score_threshold = float(score_threshold)
 
-    # print("------------")
-    # print("配置文件是", config)
-    # """
     logger = LoggerType("none")  # rich, none, print
     progress_logger = LoggerFactory().create_logger(logger)
     info, error, success = _logger(progress_logger)
@@ -298,12 +294,12 @@ class DownloadTask:
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--root_directory", type=str, default='/home/turing/graphragtest/graphrag_230/ragtest')
+    parser.add_argument("--root_directory", type=str, default='/home/turing/graphragtest/graphrag230/ragtest')
     parser.add_argument("--config_file", type=str, default='/home/turing/workspace/rag/stores/default_setting/settings_cn.yaml')
     parser.add_argument("--is_update_run", type=str, default=False)
     parser.add_argument("--index_method", type=str, default="fast")
     parser.add_argument("--bert_mode", type=str, default="muilt")
-    parser.add_argument("--ner_labels", type=str, default={"muilt": [""]})
+    parser.add_argument("--ner_labels", type=str, default={"muilt": ["DATE", "PER", "ORG", "LOC"]})
 
     args = parser.parse_args()
 

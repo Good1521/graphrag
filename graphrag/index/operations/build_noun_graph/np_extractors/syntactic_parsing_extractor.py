@@ -24,6 +24,35 @@ import re
 from langdetect import detect
 import os
 
+
+NER_LABEL_SETS = {
+    "DATE": "Time",
+    "PER": "Person",
+    "ORG": "Organization",
+    "LOC": "Location",
+    "EVENT": "Event",
+    "FAC": "Facility",
+    "GPE": "Country",
+    "LAW": "Law",
+    "LOC": "Location",
+    "NORP": "Group",
+    "ORG": "Organization",
+    "PERSON": "Person",
+    "PRODUCT": "Product",
+    "WORK_OF_ART": "Artwork",
+    "MISC": "Other",
+    "PER": "Person",
+    "ORG": "Organization",
+    "LOC": "Location",
+    "Cell": "Cell",
+    "Chemical": "Chemical",
+    "GENE": "Gene",
+    "Protein": "Protein",
+    "Sequence": "Sequence",
+    "Taxon": "Species"
+}
+
+
 class SyntacticNounPhraseExtractor(BaseNounPhraseExtractor):
     """基于 BERT 的名词短语提取器，使用命名实体识别 (NER) 和依存句法分析。"""
     
@@ -108,7 +137,7 @@ class SyntacticNounPhraseExtractor(BaseNounPhraseExtractor):
         self.score_threshold = score_threshold
 
 
-    def extract(self, text: str) -> list[str]:
+    def extract(self, text: str) -> list[dict]:
         lang_text = detect(text)
 
         if self.mode == "muilt":
@@ -133,7 +162,9 @@ class SyntacticNounPhraseExtractor(BaseNounPhraseExtractor):
 
         """提取文本中的名词短语。"""
         doc_chunks = self._chunk_text(tokenizer, lang_text, text, max_length)
-        filtered_noun_phrases = set()
+        filtered_noun_phrases = []
+        seen = set()
+
         if self.mode == "muilt":
             ner_pipeline = self.m_ner_pipeline
             all_entities = ner_pipeline(doc_chunks)
@@ -177,10 +208,15 @@ class SyntacticNounPhraseExtractor(BaseNounPhraseExtractor):
                     if "[UNK]" in noun_phrase:
                         continue
                     if noun_phrase.upper() not in self.exclude_nouns:
-                        filtered_noun_phrases.add(noun_phrase)
-
+                        key = (noun_phrase, entity['entity_group'])
+                        if key not in seen:
+                            seen.add(key)
+                            filtered_noun_phrases.append({
+                                "title": noun_phrase,
+                                "type": NER_LABEL_SETS[entity['entity_group']]
+                            })
+                
         return list(filtered_noun_phrases)
-
     
     def _chunk_text(self, tokenizer, lang, text: str, max_length: int = 512) -> list[str]:
         if lang == "zh-cn":
