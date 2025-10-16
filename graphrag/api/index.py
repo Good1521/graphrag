@@ -87,6 +87,7 @@ async def build_index(
         outputs.append(output)
         if output.errors and len(output.errors) > 0:
             logger.error(output.workflow)
+            download_task.task_exception()
         else:
             logger.success(output.workflow)
         logger.info(str(output.result))
@@ -203,11 +204,10 @@ async def get_index(download_task,get_workspace_path,root_directory,config_file,
     skip_validation = False
     if not skip_validation:
         if_model_work = await async_validate_config_names(progress_logger, config)
-
-    if not if_model_work:
-        print("验证大模型发生了错误连接失败------->", if_model_work)
-        download_task.task_exception()
-        return None
+        if not if_model_work:
+            print("验证大模型发生了错误连接失败------->", if_model_work)
+            download_task.task_exception()
+            return None
     
     dry_run = False
     info(f"Starting pipeline run. {dry_run=}", verbose)

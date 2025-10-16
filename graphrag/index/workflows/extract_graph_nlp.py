@@ -59,6 +59,6 @@ async def extract_graph_nlp(
 
     # add in any other columns required by downstream workflows
     extracted_nodes["description"] = ""
-    extracted_edges["description"] = ""
+    # extracted_edges["description"] = ""
 
     return (extracted_nodes, extracted_edges)

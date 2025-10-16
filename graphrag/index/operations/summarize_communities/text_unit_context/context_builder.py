@@ -56,9 +56,9 @@ def build_local_context(
 
     context_df[schemas.ALL_CONTEXT] = context_df.apply(
         lambda x: {
-            "id": x[schemas.ALL_DETAILS][schemas.SHORT_ID],
-            "text": x[schemas.ALL_DETAILS][schemas.TEXT],
-            "entity_degree": x[schemas.ALL_DETAILS][schemas.ENTITY_DEGREE],
+            "id": x[schemas.ALL_DETAILS].get(schemas.SHORT_ID) if isinstance(x[schemas.ALL_DETAILS], dict) else "",
+            "text": x[schemas.ALL_DETAILS].get(schemas.TEXT) if isinstance(x[schemas.ALL_DETAILS], dict) else "",
+            "entity_degree": x[schemas.ALL_DETAILS].get(schemas.ENTITY_DEGREE) if isinstance(x[schemas.ALL_DETAILS], dict) else 0,
         },
         axis=1,
     )
